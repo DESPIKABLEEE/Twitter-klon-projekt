@@ -9,10 +9,10 @@ COPY package*.json ./
 RUN npm ci --only=production
 
 # Copy WebSocket server code
-COPY websocket/ ./
+COPY src/websocket/ ./
 
 # Expose WebSocket port
 EXPOSE 8080
 
 # Start WebSocket server
-CMD ["node", "websocket-server.js"]
+CMD ["node", "socketServer.js"]
