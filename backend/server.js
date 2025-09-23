@@ -1,0 +1,123 @@
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
+
+const db = require('./config/database');
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const postRoutes = require('./routes/posts');
+const { router: notificationRoutes } = require('./routes/notifications');
+const { initializeSocket } = require('./src/websocket/socketServer');
+
+const app = express();
+const server = http.createServer(app);
+const PORT = process.env.PORT || 5000;
+
+const io = initializeSocket(server);
+
+app.use(helmet());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://yourdomain.com'] 
+    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+  credentials: true
+}));
+
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/api/', limiter);
+
+app.use(morgan('combined'));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use('/uploads', express.static('uploads'));
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
+  });
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'API endpoint not found'
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Error', err);
+  
+  if (err.code === 'ER_DUP_ENTRY') {
+    return res.status(400).json({
+      success: false,
+      message: 'Resource already exists'
+    });
+  }
+
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Token expired'
+    });
+  }
+
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation error',
+      errors: err.errors
+    });
+  }
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Shutting down gracefully...');
+  process.exit(0);
+});
+
+// Start server
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`🔌 WebSocket server initialized`);
+});
+
+module.exports = { app, server, io };

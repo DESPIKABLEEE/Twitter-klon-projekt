@@ -1,0 +1,233 @@
+.main_container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
+    background-color: #000;
+}
+
+.livi_div {
+    flex-basis: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.livi_div img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 16px;
+}
+
+.desni_div {
+    flex-basis: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2rem;
+    max-width: 400px;
+}
+
+.desni_div h1 {
+    font-size: 4rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
+    color: #e7e9ea;
+    line-height: 1.2;
+}
+
+.forma_prijava_login {
+    width: 100%;
+    max-width: 364px;
+}
+
+.forma_prijava_login h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    color: #e7e9ea;
+}
+
+.forma_prijava_login form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.forma_prijava_login input {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background-color: #000;
+    color: #e7e9ea;
+    font-size: 1.1rem;
+    transition: border-color 0.2s ease;
+}
+
+.forma_prijava_login input:focus {
+    outline: none;
+    border-color: #1d9bf0;
+}
+
+.forma_prijava_login input::placeholder {
+    color: #71767b;
+}
+
+.forma_prijava_login button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 9999px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 0.5rem 0;
+}
+
+.forma_prijava_login button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.forma_prijava_login button[type="submit"] {
+    background-color: #1d9bf0;
+    color: #fff;
+}
+
+.forma_prijava_login button[type="submit"]:hover:not(:disabled) {
+    background-color: #1a8cd8;
+}
+
+.forma_prijava_login button[type="submit"]:active:not(:disabled) {
+    background-color: #1570b5;
+}
+
+.forma_prijava_login .secondary-btn {
+    background-color: transparent;
+    color: #1d9bf0;
+    border: 1px solid #333;
+}
+
+.forma_prijava_login .secondary-btn:hover {
+    background-color: rgba(29, 155, 240, 0.1);
+    border-color: #1d9bf0;
+}
+
+.error-message {
+    background-color: #1a1d23;
+    border: 1px solid #f4212e;
+    color: #f4212e;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.forma_prijava_login p {
+    text-align: center;
+    margin: 1rem 0;
+    color: #71767b;
+    position: relative;
+}
+
+.forma_prijava_login p::before,
+.forma_prijava_login p::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 45%;
+    height: 1px;
+    background-color: #333;
+}
+
+.forma_prijava_login p::before {
+    left: 0;
+}
+
+.forma_prijava_login p::after {
+    right: 0;
+}
+
+@media (max-width: 1024px) {
+    .main_container {
+        flex-direction: column;
+        padding: 1rem;
+        justify-content: flex-start;
+        min-height: 100vh;
+    }
+    
+    .livi_div,
+    .desni_div {
+        flex-basis: auto;
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    .livi_div {
+        order: 2;
+        margin-top: 2rem;
+        padding: 1rem;
+    }
+    
+    .desni_div {
+        order: 1;
+        align-items: center;
+        text-align: center;
+        padding-top: 2rem;
+    }
+    
+    .desni_div h1 {
+        font-size: 3rem;
+        margin-bottom: 2rem;
+        display: block;
+        visibility: visible;
+    }
+}
+
+@media (max-width: 768px) {
+    .main_container {
+        padding: 1rem;
+    }
+    
+    .desni_div {
+        padding: 1rem;
+    }
+    
+    .desni_div h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .forma_prijava_login h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .desni_div h1 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .forma_prijava_login {
+        width: 100%;
+        padding: 0 1rem;
+    }
+    
+    .forma_prijava_login h3 {
+        font-size: 1.25rem;
+    }
+    
+    .forma_prijava_login input,
+    .forma_prijava_login button {
+        padding: 0.75rem;
+        font-size: 1rem;
+    }
+}

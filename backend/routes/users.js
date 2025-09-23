@@ -1,0 +1,170 @@
+const express = require('express');
+const router = express.Router();
+const { query } = require('../config/database');
+const { optionalAuth, authenticateToken } = require('../middlewares/auth');
+
+router.get('/:username', optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUserId = req.user ? req.user.id : null;
+
+    const userResult = await query(
+      `SELECT id, username, email, display_name, bio, 
+              avatar_url, created_at, followers_count, following_count
+       FROM users 
+       WHERE username = ?`,
+      [username]
+    );
+
+    if (userResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ne postoji user'
+      });
+    }
+
+    const user = userResult[0];
+
+    let isFollowing = false;
+
+    if (currentUserId && currentUserId !== user.id) {
+      const followResult = await query(
+        'SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?',
+        [currentUserId, user.id]
+      );
+      isFollowing = followResult.length > 0;
+    }
+
+    const postsResult = await query(
+      `SELECT p.*, u.username, u.display_name, u.avatar_url,
+              COUNT(DISTINCT l.id) as likes_count,
+              COUNT(DISTINCT c.id) as comments_count,
+              MAX(CASE WHEN l.user_id = ? THEN 1 ELSE 0 END) as user_liked
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       LEFT JOIN likes l ON p.id = l.post_id
+       LEFT JOIN comments c ON p.id = c.post_id
+       WHERE p.user_id = ?
+       GROUP BY p.id
+       ORDER BY p.created_at DESC
+       LIMIT 20`,
+      [currentUserId, user.id]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          ...user,
+          isFollowing,
+          isOwnProfile: currentUserId === user.id
+        },
+        posts: postsResult
+      }
+    });
+
+  } catch (error) {
+    console.log('get user', error); // debug
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+router.post('/:username/follow', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUserId = req.user.id;
+
+    const targetUserResult = await query(
+      'SELECT id FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (targetUserResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Nema usera'
+      });
+    }
+
+    const targetUserId = targetUserResult[0].id;
+
+    if (currentUserId === targetUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'follow samog sebe'
+      });
+    }
+
+    const existingFollow = await query(
+      'SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?',
+      [currentUserId, targetUserId]
+    );
+
+    let isFollowing;
+    
+    if (existingFollow.length > 0) {
+      await query(
+        'DELETE FROM follows WHERE follower_id = ? AND following_id = ?',
+        [currentUserId, targetUserId]
+      );
+      
+      await query(
+        'UPDATE users SET followers_count = followers_count - 1 WHERE id = ?',
+        [targetUserId]
+      );
+      await query(
+        'UPDATE users SET following_count = following_count - 1 WHERE id = ?',
+        [currentUserId]
+      );
+      
+      isFollowing = false;
+    } else {
+      await query(
+        'INSERT INTO follows (follower_id, following_id) VALUES (?, ?)',
+        [currentUserId, targetUserId]
+      );
+      
+      await query(
+        'UPDATE users SET followers_count = followers_count + 1 WHERE id = ?',
+        [targetUserId]
+      );
+      await query(
+        'UPDATE users SET following_count = following_count + 1 WHERE id = ?',
+        [currentUserId]
+      );
+      
+      isFollowing = true;
+    }
+
+    const updatedUser = await query(
+      'SELECT followers_count, following_count FROM users WHERE id = ?',
+      [targetUserId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        isFollowing,
+        followers_count: updatedUser[0].followers_count,
+        following_count: updatedUser[0].following_count
+      }
+    });
+
+  } catch (error) {
+    console.log('FOLLOW_UNFOLLOW', error); // debug
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// dummy
+router.get('/', (req, res) => {
+  res.json({ success: true, message: 'dummy' });
+});
+
+module.exports = router;
