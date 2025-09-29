@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { userStore, profileStore } from '../stores';
-import { Trash, ChatCircleText, Heart, Calendar  } from "@phosphor-icons/react";
+import { Trash, ChatCircleText, Heart, Calendar, ArrowLeft  } from "@phosphor-icons/react";
 import FollowModal from '../components/FollowModal';
 import './Profile.css';
 
@@ -247,7 +247,7 @@ const Profile = observer(() => {
             <div className="profile-container">
                 <div className="profile-content">
                     <div className="error-message">{profileStore.error}</div>
-                    <Link to="/" className="back-link">← Back to Home</Link>
+                    <Link to="/" className="back-link"><ArrowLeft size={32} weight="light" /> Back to Home</Link>
                 </div>
             </div>
         );
