@@ -1,99 +1,75 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { observer } from 'mobx-react';
+import { userStore, homeStore } from '../stores';
 import NotificationBell from '../components/NotificationBell';
 import './Home.css';
+import { Trash, ChatCircleText, Heart, RocketLaunch } from "@phosphor-icons/react";
 
-function Home() {
-    const [user, setUser] = useState(null);
-    const [posts, setPosts] = useState([]);
-    const [newPost, setNewPost] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [postsLoading, setPostsLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [showComments, setShowComments] = useState({});
-    const [comments, setComments] = useState({}); 
-    const [newComment, setNewComment] = useState({}); 
-    const [commentLoading, setCommentLoading] = useState({}); 
-    const [showFollowingOnly, setShowFollowingOnly] = useState(false);
+const Home = observer(() => {
     const navigate = useNavigate();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
-
+        
         if (!token || !userData) {
             navigate('/login');
             return;
         }
-
-        try {
-            const parsedUser = JSON.parse(userData);
-            setUser(parsedUser);
-            console.log('localStorage user', parsedUser); // debug
-            
-            fetchPosts();
-        } catch (err) {
-            console.log('Error', err); // debug log
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            navigate('/login');
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
+        userStore.setUser(JSON.parse(userData));
+        userStore.setToken(token);
+        
+        homeStore.setShowFollowingOnly(false);
+        fetchPosts(false);
     }, [navigate]);
 
     const fetchPosts = async (followingOnly = false) => {
         try {
             const token = localStorage.getItem('token');
-            console.log('followingOnly:', followingOnly); // debug
+            console.log('followingOnly:', followingOnly);
             
             if (!token) {
-                console.log('Nema tokena u browseru'); // debug
-                setError('Please login again');
-                navigate('/login');
+                console.log('Nema tokena u browseru');
                 return;
             }
-            
-            setPostsLoading(true);
-            
-            let endpoint = 'http://localhost:6969/api/posts';
-            if (followingOnly === true) {
-                endpoint = endpoint + '/following'; 
-            }
-                            
+
+            console.log('Token prilikom poziva fetch posta:', token);
+            homeStore.setPostsLoading(true);
+
+            const endpoint = followingOnly 
+                ? 'http://localhost:6969/api/posts/following'
+                : 'http://localhost:6969/api/posts';
+
             const response = await fetch(endpoint, {
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
             });
 
             const data = await response.json();
-            
-            console.log('data ', data); // debug
-            
-            if (data.success && data.data && data.data.posts) {
-                console.log('Setting posts:', data.data.posts.length, 'posts'); // debug
-                setPosts(data.data.posts);
+
+            if (data.success) {
+                homeStore.setPosts(data.data.posts);
             } else {
-                console.log('ERROR ', data); 
-                setError('ERROR sa postovima');
-                alert('Something went wrong loading posts!'); 
+                console.error('Greška postovi:', data.message);
+                homeStore.setError(data.message || 'Failed to fetch posts');
             }
         } catch (error) {
-            console.log('ERROR fetching', error); 
-            setError('nema postova');
-            alert('Error: ' + error.message); 
+            console.error('Greška :', error);
+            homeStore.setError('Error loading posts');
         } finally {
-            console.log('setting loading false'); // debug
-            setPostsLoading(false);
+            homeStore.setPostsLoading(false);
         }
-    };
-
-    const handleCreatePost = async (e) => {
+    };    const handleCreatePost = async (e) => {
         e.preventDefault();
-        if (!newPost.trim()) return;
+        if (!homeStore.newPost.trim()) return;
 
-        setLoading(true);
-        setError('');
+        homeStore.setLoading(true);
+        homeStore.setError('');
 
         try {
             const token = localStorage.getItem('token');
@@ -103,27 +79,27 @@ function Home() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ content: newPost })
+                body: JSON.stringify({ content: homeStore.newPost })
             });
 
             const data = await response.json();
             if (data.success) {
-                setPosts([data.data, ...posts]);
-                setNewPost('');
+                homeStore.addPost(data.data);
+                homeStore.setNewPost('');
             } else {
-                setError(data.message || 'Failed to create post');
+                homeStore.setError(data.message || 'Failed to create post');
             }
         } catch (error) {
             console.error('Error kod kreacije', error);
-            setError('Failed to create post');
+            homeStore.setError('Failed to create post');
         } finally {
-            setLoading(false);
+            homeStore.setLoading(false);
         }
     };
 
     const handleToggleFilter = (followingOnly) => {
-        setShowFollowingOnly(followingOnly);
-        setPostsLoading(true);
+        homeStore.setShowFollowingOnly(followingOnly);
+        homeStore.setPostsLoading(true);
         fetchPosts(followingOnly);
     };
 
@@ -140,35 +116,26 @@ function Home() {
             const data = await response.json();
             console.log('Like ', data); // debug
             if (data.success) {
-                const updatedPosts = [];
-                for (let i = 0; i < posts.length; i++) {
-                    if (posts[i].id === postId) {
-                        updatedPosts.push({
-                            ...posts[i],
-                            user_liked: data.data.isLiked,
-                            likes_count: data.data.likesCount
-                        });
-                    } else {
-                        updatedPosts.push(posts[i]);
-                    }
-                }
-                setPosts(updatedPosts);
+                homeStore.updatePost(postId, {
+                    user_liked: data.data.isLiked,
+                    likes_count: data.data.likesCount
+                });
             } else {
-                alert('Failed to like/unlike post');
+                alert('Failed like/unlike');
             }
         } catch (error) {
             console.log('Error sa postom', error);
-            alert('Failed to like/unlike post');
+            alert('Failed like/unlike');
         }
     };
 
     const handleToggleComments = async (postId) => {
-        if (showComments[postId]) {
-            setShowComments(prev => ({ ...prev, [postId]: false }));
+        if (homeStore.showComments[postId]) {
+            homeStore.toggleComments(postId);
         } else {
-            setShowComments(prev => ({ ...prev, [postId]: true }));
+            homeStore.toggleComments(postId);
             
-            if (!comments[postId]) {
+            if (!homeStore.comments[postId]) {
                 try {
                     const token = localStorage.getItem('token');
                     const response = await fetch(`http://localhost:6969/api/posts/${postId}/comments`, {
@@ -179,10 +146,10 @@ function Home() {
 
                     const data = await response.json();
                     if (data.success) {
-                        setComments(prev => ({ ...prev, [postId]: data.data.comments }));
+                        homeStore.setComments(postId, data.data.comments);
                     }
                 } catch (error) {
-                    console.error('Error loading comments:', error);
+                    console.error('Error comments:', error);
                 }
             }
         }
@@ -190,11 +157,11 @@ function Home() {
 
     const handleCommentSubmit = async (postId, e) => {
         e.preventDefault();
-        const commentText = newComment[postId]?.trim();
+        const commentText = homeStore.newComment[postId]?.trim();
         
         if (!commentText) return;
 
-        setCommentLoading(prev => ({ ...prev, [postId]: true }));
+        homeStore.setCommentLoading(postId, true);
 
         try {
             const token = localStorage.getItem('token');
@@ -209,26 +176,46 @@ function Home() {
 
             const data = await response.json();
             if (data.success) {
-                setComments(prev => ({
-                    ...prev,
-                    [postId]: [...(prev[postId] || []), data.data]
-                }));
+                homeStore.addComment(postId, data.data);
+                homeStore.setNewComment(postId, '');
                 
-                setNewComment(prev => ({ ...prev, [postId]: '' }));
-                
-                setPosts(posts.map(post => 
-                    post.id === postId 
-                        ? { ...post, comments_count: post.comments_count + 1 }
-                        : post
-                ));
+                homeStore.updatePost(postId, {
+                    comments_count: homeStore.posts.find(p => p.id === postId).comments_count + 1
+                });
             } else {
-                setError(data.message || 'Failed to post comment');
+                homeStore.setError(data.message || 'Failed to post comment');
             }
         } catch (error) {
-            console.error('Error posting comment:', error);
-            setError('Failed to post comment');
+            console.error('Error comment:', error);
+            homeStore.setError('Failed comment');
         } finally {
-            setCommentLoading(prev => ({ ...prev, [postId]: false }));
+            homeStore.setCommentLoading(postId, false);
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        if (!window.confirm('Are you sure you want to delete this post?')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:6969/api/posts/${postId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                homeStore.removePost(postId);
+            } else {
+                homeStore.setError(data.message || 'Failed to delete post');
+            }
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            homeStore.setError('Failed to delete post');
         }
     };
 
@@ -238,11 +225,11 @@ function Home() {
         navigate('/login');
     };
 
-    if (!user) {
+    if (!userStore.user) {
         return <div className="loading">Loading...</div>;
     }
 
-    const characterCount = newPost.length;
+    const characterCount = homeStore.newPost.length;
     const maxCharacters = 280;
     const isOverLimit = characterCount > maxCharacters;
 
@@ -251,7 +238,11 @@ function Home() {
             <div className="home-content">
                 <header className="home-header">
                     <h1 className="home-title">Home</h1>
-                    {user && <span className="user-greeting">Welcome, @{user.username}</span>}
+                    {userStore.user && (
+                        <span className="user-greeting">
+                            Welcome, <Link to={`/${userStore.user.username}`} className="user-greeting-link">@{userStore.user.username}</Link>
+                        </span>
+                    )}
                     <div className="header-actions">
                         <NotificationBell />
                         <button 
@@ -265,13 +256,13 @@ function Home() {
 
                 <div className="posts-filter">
                     <button 
-                        className={`filter-btn ${!showFollowingOnly ? 'active' : ''}`}
+                        className={`filter-btn ${!homeStore.showFollowingOnly ? 'active' : ''}`}
                         onClick={() => handleToggleFilter(false)}
                     >
                         For you
                     </button>
                     <button 
-                        className={`filter-btn ${showFollowingOnly ? 'active' : ''}`}
+                        className={`filter-btn ${homeStore.showFollowingOnly ? 'active' : ''}`}
                         onClick={() => handleToggleFilter(true)}
                     >
                         Following
@@ -283,8 +274,8 @@ function Home() {
                         <textarea
                             className="post-textarea"
                             placeholder="What's happening?"
-                            value={newPost}
-                            onChange={(e) => setNewPost(e.target.value)}
+                            value={homeStore.newPost}
+                            onChange={(e) => homeStore.setNewPost(e.target.value)}
                             maxLength={320}
                         />
                         <div className="post-form-footer">
@@ -294,25 +285,25 @@ function Home() {
                             <button 
                                 type="submit" 
                                 className="post-btn"
-                                disabled={loading || !newPost.trim() || isOverLimit}
+                                disabled={homeStore.loading || !homeStore.newPost.trim() || isOverLimit}
                             >
-                                {loading ? 'Posting...' : 'Post'}
+                                {homeStore.loading ? 'Posting...' : 'Post'}
                             </button>
                         </div>
                     </form>
-                    {error && <div className="error-message">{error}</div>}
+                    {homeStore.error && <div className="error-message">{homeStore.error}</div>}
                 </div>
 
                 <div className="posts-feed">
-                    {postsLoading ? (
+                    {homeStore.postsLoading ? (
                         <div className="loading">Loading posts...</div>
-                    ) : posts.length === 0 ? (
+                    ) : homeStore.posts.length === 0 ? (
                         <div className="welcome-card">
                             <h3>No posts yet!</h3>
-                            <p>Be the first to share something with the world 🚀</p>
+                            <p>Be the first to share something with the world <RocketLaunch size={32} weight="light" /></p>
                         </div>
                     ) : (
-                        posts.map(post => (
+                        homeStore.posts.map(post => (
                             <div key={post.id} className="welcome-card">
                                 <div className="post-header">
                                     <Link to={`/${post.username}`} className="post-avatar">
@@ -334,6 +325,15 @@ function Home() {
                                             </Link> · {new Date(post.created_at).toLocaleDateString()}
                                         </div>
                                     </div>
+                                    {userStore.user && userStore.user.username === post.username && (
+                                        <button 
+                                            className="delete-post-btn"
+                                            onClick={() => handleDeletePost(post.id)}
+                                            title="Delete post"
+                                        >
+                                            <Trash size={32} />
+                                        </button>
+                                    )}
                                 </div>
                                 <p className="post-content">{post.content}</p>
                                 {post.image_url && (
@@ -349,22 +349,21 @@ function Home() {
                                         onClick={() => handleToggleComments(post.id)}
                                         style={{ cursor: 'pointer' }}
                                     >
-                                        💬 {post.comments_count}
+                                        <ChatCircleText size={32} /> {post.comments_count}
                                     </span>
                                     <span 
                                         className={`post-action-like ${post.user_liked ? 'post-action-liked' : ''}`}
                                         onClick={() => handleLikePost(post.id)}
                                         style={{ cursor: 'pointer' }}
                                     >
-                                        {post.user_liked ? '❤️' : '🤍'} {post.likes_count}
+                                        {post.user_liked ? <Heart size={32} weight="light" /> : <Heart size={32} weight="light" />} {post.likes_count}
                                     </span>
                                 </div>
                                 
-                                {/* Comments Section */}
-                                {showComments[post.id] && (
+                                {homeStore.showComments[post.id] && (
                                     <div className="comments-section">
                                         <div className="comments-list">
-                                            {comments[post.id]?.map(comment => (
+                                            {homeStore.comments[post.id]?.map(comment => (
                                                 <div key={comment.id} className="comment-item">
                                                     <div className="comment-header">
                                                         <Link to={`/${comment.username}`} className="comment-avatar">
@@ -394,20 +393,17 @@ function Home() {
                                             <textarea
                                                 className="comment-textarea"
                                                 placeholder="Write a comment..."
-                                                value={newComment[post.id] || ''}
-                                                onChange={(e) => setNewComment(prev => ({ 
-                                                    ...prev, 
-                                                    [post.id]: e.target.value 
-                                                }))}
+                                                value={homeStore.newComment[post.id] || ''}
+                                                onChange={(e) => homeStore.setNewComment(post.id, e.target.value)}
                                                 maxLength={280}
                                                 rows={2}
                                             />
                                             <button 
                                                 type="submit" 
                                                 className="comment-btn"
-                                                disabled={commentLoading[post.id] || !(newComment[post.id]?.trim())}
+                                                disabled={homeStore.commentLoading[post.id] || !(homeStore.newComment[post.id]?.trim())}
                                             >
-                                                {commentLoading[post.id] ? 'Posting...' : 'Comment'}
+                                                {homeStore.commentLoading[post.id] ? 'Posting...' : 'Comment'}
                                             </button>
                                         </form>
                                     </div>
@@ -419,6 +415,6 @@ function Home() {
             </div>
         </div>
     );
-}
+});
 
 export default Home;

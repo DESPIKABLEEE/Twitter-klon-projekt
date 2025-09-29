@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 // import { io } from 'socket.io-client';
-import './NotificationBell.css';
+// import './NotificationBell.css';
+import { Bell } from "@phosphor-icons/react";
 
 const NotificationBell = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -13,7 +14,7 @@ const NotificationBell = () => {
 
   return (
     <div className="notification-bell">
-      <div className="bell-icon" onClick={toggleDropdown}>🔔</div>
+      <div className="bell-icon" onClick={toggleDropdown}><Bell size={32} /></div>
 
       {isDropdownOpen && (
         <div className="notification-dropdown">

@@ -50,18 +50,38 @@ services:
     networks:
       - twitter_network
 
-  # WebSocket Server (može biti isti container kao backend)
-  websocket:
+  # WebSocket Server - DISABLED
+  # websocket:
+  #   build: 
+  #     context: ./backend
+  #     dockerfile: Dockerfile.websocket
+  #   container_name: twitter_websocket
+  #   restart: unless-stopped
+  #   environment:
+  #     NODE_ENV: development
+  #     WS_PORT: 8080
+  #   ports:
+  #     - "8080:8080"
+  #   networks:
+  #     - twitter_network
+
+  # React Frontend
+  frontend:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile.websocket
-    container_name: twitter_websocket
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: twitter_frontend
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      WS_PORT: 8080
+      VITE_API_URL: http://localhost:6969
     ports:
-      - "8080:8080"
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
     networks:
       - twitter_network
 

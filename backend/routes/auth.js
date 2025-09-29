@@ -113,7 +113,7 @@ router.post('/login', [
     if (users.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'nepravilan mail ili password'
+        message: 'nepravilan mail ili password' // ode bi tribalo ic korisnik ne postoji a ne nepravilan mail
       });
     }
 
@@ -136,7 +136,7 @@ router.post('/login', [
     );
 
 
-    delete user.password_hash;
+    delete user.password_hash; // zasto brisem sifru
 
     res.json({
       success: true,

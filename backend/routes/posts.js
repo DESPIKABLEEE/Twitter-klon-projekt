@@ -99,11 +99,15 @@ router.get('/following', authenticateToken, async (req, res) => {
         (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id AND l.user_id = ?) as user_liked
       FROM posts p
       JOIN users u ON p.user_id = u.id
-      JOIN follows f ON f.following_id = p.user_id
-      WHERE f.follower_id = ?
+      WHERE (
+        p.user_id IN (
+          SELECT following_id FROM follows WHERE follower_id = ?
+        ) 
+        OR p.user_id = ?
+      )
       ORDER BY p.created_at DESC
       LIMIT 50
-    `, [userId, userId]);
+    `, [userId, userId, userId]); //LIMIT maknit?
 
     console.log('broj psotova :', posts.length); // more debug
 

@@ -231,3 +231,31 @@
         font-size: 1rem;
     }
 }
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.forma_prijava_login input.error {
+    border-color: #f4212e;
+    background-color: rgba(244, 33, 46, 0.1);
+}
+
+.field-error {
+    color: #f4212e;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.error-message {
+    background-color: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+    padding: 0.75rem;
+    border-radius: 4px;
+    border-left: 4px solid #f4212e;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}

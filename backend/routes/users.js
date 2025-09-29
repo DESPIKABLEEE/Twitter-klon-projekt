@@ -3,6 +3,87 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { optionalAuth, authenticateToken } = require('../middlewares/auth');
 
+router.get('/:username/followers', optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    const userResult = await query(
+      'SELECT id FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (userResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userId = userResult[0].id;
+
+    const followers = await query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url
+      FROM follows f
+      JOIN users u ON f.follower_id = u.id
+      WHERE f.following_id = ?
+      ORDER BY f.created_at DESC
+    `, [userId]);
+
+    res.json({
+      success: true,
+      data: { followers }
+    });
+
+  } catch (error) {
+    console.log('GET_FOLLOWERS', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Get following list - must be before /:username route
+router.get('/:username/following', optionalAuth, async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    const userResult = await query(
+      'SELECT id FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (userResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userId = userResult[0].id;
+
+    const following = await query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url
+      FROM follows f
+      JOIN users u ON f.following_id = u.id
+      WHERE f.follower_id = ?
+      ORDER BY f.created_at DESC
+    `, [userId]);
+
+    res.json({
+      success: true,
+      data: { following }
+    });
+
+  } catch (error) {
+    console.log('GET_FOLLOWING', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 router.get('/:username', optionalAuth, async (req, res) => {
   try {
     const { username } = req.params;
