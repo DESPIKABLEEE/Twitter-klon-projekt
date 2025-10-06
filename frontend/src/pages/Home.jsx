@@ -211,7 +211,28 @@ const Home = observer(() => {
 
             <div className="main-content">
                 <div className="main-header">
-                    <h1 className="header-title">Home</h1>
+                    <div className="feed-tabs">
+                        <button 
+                            className={`feed-tab ${!homeStore.showFollowingOnly ? 'active' : ''}`}
+                            onClick={() => {
+                                if (homeStore.showFollowingOnly) {
+                                    homeStore.toggleFeedType();
+                                }
+                            }}
+                        >
+                            For You
+                        </button>
+                        <button 
+                            className={`feed-tab ${homeStore.showFollowingOnly ? 'active' : ''}`}
+                            onClick={() => {
+                                if (!homeStore.showFollowingOnly) {
+                                    homeStore.toggleFeedType();
+                                }
+                            }}
+                        >
+                            Following
+                        </button>
+                    </div>
                 </div>
 
                 <div className="tweet-compose">

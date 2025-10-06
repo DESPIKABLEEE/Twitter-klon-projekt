@@ -3,7 +3,7 @@ import React, { useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { userStore, profileStore } from '../stores';
-import './TwitterHome.css';
+import './Home.css';
 import { 
     Trash, 
     ChatCircleText, 

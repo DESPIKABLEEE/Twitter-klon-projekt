@@ -18,6 +18,21 @@ class PostService {
         }
     }
 
+    async fetchFollowingPosts() {
+        try {
+            const response = await fetch(`${this.baseUrl}/posts/following`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            if (!response.ok) throw new Error('Failed to fetch following posts');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching following posts:', error);
+            throw error;
+        }
+    }
+
     async createPost(content) {
         try {
             const payload = {

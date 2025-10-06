@@ -99,6 +99,30 @@ class HomeStore {
         }
     };
 
+    fetchFollowingPosts = async () => {
+        try {
+            this.setPostsLoading(true);
+            this.setError('');
+            const response = await PostService.fetchFollowingPosts();
+            const posts = response.data?.posts || response.posts || response || [];
+            this.setPosts(Array.isArray(posts) ? posts : []);
+        } catch (error) {
+            this.setError(error.message);
+            this.setPosts([]);
+        } finally {
+            this.setPostsLoading(false);
+        }
+    };
+
+    toggleFeedType = () => {
+        this.showFollowingOnly = !this.showFollowingOnly;
+        if (this.showFollowingOnly) {
+            this.fetchFollowingPosts();
+        } else {
+            this.fetchPosts();
+        }
+    };
+
     createPost = async (content, image = null) => {
         try {
             this.setLoading(true);
