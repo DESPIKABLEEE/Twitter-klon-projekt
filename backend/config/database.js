@@ -21,10 +21,10 @@ const promisePool = pool.promise();
 const testConnection = async () => {
   try {
     const connection = await promisePool.getConnection();
-    console.log('😎 Database connected successfully');
+    console.log('Database connected successfully');
     connection.release();
   } catch (error) {
-    console.error('😭 Database connection failed:', error.message);
+    console.error('Database connection failed:', error.message);
     
     setTimeout(testConnection, 5000);
   }

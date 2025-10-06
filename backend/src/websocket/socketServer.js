@@ -7,26 +7,37 @@ const userSockets = new Map();
 const initializeSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
       methods: ["GET", "POST"],
       credentials: true
-    }
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
   });
 
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
+    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+    
+    console.log('🔐 WebSocket auth attempt:', { 
+      hasToken: !!token, 
+      tokenLength: token?.length,
+      authHeader: socket.handshake.headers.authorization 
+    });
     
     if (!token) {
-      return next(new Error('Authentication error'));
+      console.log('❌ No token provided for WebSocket');
+      return next(new Error('No authentication token'));
     }
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
       socket.userId = decoded.userId;
       socket.username = decoded.username;
+      console.log('✅ WebSocket auth success:', socket.username);
       next();
     } catch (err) {
-      next(new Error('Authentication error'));
+      console.log('❌ WebSocket auth failed:', err.message);
+      next(new Error('Invalid authentication token'));
     }
   });
 

@@ -3,8 +3,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/database');
+const { OAuth2Client } = require('google-auth-library');
 
 const router = express.Router();
+
+const oauth2Client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  `${process.env.BASE_URL || 'http://localhost:6969'}/api/auth/google/callback`
+);
 
 
 router.post('/register', [
@@ -113,7 +120,7 @@ router.post('/login', [
     if (users.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'nepravilan mail ili password' // ode bi tribalo ic korisnik ne postoji a ne nepravilan mail
+        message: 'korisnik ne postoji'
       });
     }
 
@@ -136,7 +143,7 @@ router.post('/login', [
     );
 
 
-    delete user.password_hash; // zasto brisem sifru
+    delete user.password_hash;
 
     res.json({
       success: true,
@@ -195,6 +202,71 @@ router.get('/me', async (req, res) => {
       success: false,
       message: 'Invalid token'
     });
+  }
+});
+
+router.get('/google', (req, res) => {
+  try {
+    const authorizeUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email'],
+      prompt: 'consent'
+    });
+    res.redirect(authorizeUrl);
+  } catch (error) {
+    console.error('Google OAuth init error:', error);
+    res.status(500).json({ success: false, message: 'Failed to initialize Google login' });
+  }
+});
+
+router.get('/google/callback', async (req, res) => {
+  try {
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'No authorization code provided' });
+    }
+
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    let user = await query('SELECT * FROM users WHERE google_id = ? OR email = ?', [googleId, email]);
+
+    if (user.length === 0) {
+      const username = email.split('@')[0] + Math.random().toString(36).substring(2, 8);
+      const result = await query(
+        'INSERT INTO users (google_id, email, username, display_name, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [googleId, email, username, name, picture]
+      );
+      
+      user = await query('SELECT * FROM users WHERE id = ?', [result.insertId]);
+    } else {
+      if (!user[0].google_id) {
+        await query('UPDATE users SET google_id = ?, avatar_url = ? WHERE id = ?', [googleId, picture, user[0].id]);
+      }
+      user = await query('SELECT * FROM users WHERE id = ?', [user[0].id]);
+    }
+
+    const token = jwt.sign(
+      { userId: user[0].id, username: user[0].username },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/login?token=${token}&google=true`);
+
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.status(500).json({ success: false, message: 'Google login failed' });
   }
 });
 

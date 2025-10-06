@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS users (
     bio TEXT,
     avatar_url VARCHAR(255),
     google_id VARCHAR(100),
-    apple_id VARCHAR(100),
     is_verified BOOLEAN DEFAULT FALSE,
     followers_count INT DEFAULT 0,
     following_count INT DEFAULT 0,
@@ -19,8 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username),
     INDEX idx_email (email),
-    INDEX idx_google_id (google_id),
-    INDEX idx_apple_id (apple_id)
+    INDEX idx_google_id (google_id)
 );
 
 -- Posts table

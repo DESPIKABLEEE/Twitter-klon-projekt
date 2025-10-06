@@ -1,128 +1,95 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { userStore, homeStore } from '../stores';
 import NotificationBell from '../components/NotificationBell';
+import WhoToFollow from '../components/WhoToFollow';
+import PremiumSubscription from '../components/PremiumSubscription';
 import './Home.css';
-import { Trash, ChatCircleText, Heart, RocketLaunch } from "@phosphor-icons/react";
+import { 
+    Trash, 
+    ChatCircleText, 
+    Heart, 
+    RocketLaunch, 
+    House,
+    MagnifyingGlass,
+    Bell,
+    Envelope,
+    BookmarkSimple,
+    User,
+    DotsThree,
+    ImageSquare,
+    Gif,
+    ListBullets,
+    SmileySticker,
+    CalendarBlank,
+    MapPin
+} from "@phosphor-icons/react";
 
 const Home = observer(() => {
     const navigate = useNavigate();
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
         
-        if (!token || !userData) {
+        if (!token || !userData || userData === 'undefined' || userData === 'null') {
             navigate('/login');
             return;
         }
         
-        userStore.setUser(JSON.parse(userData));
-        userStore.setToken(token);
+        try {
+            const parsedUser = JSON.parse(userData);
+            userStore.setUser(parsedUser);
+            userStore.setToken(token);
+        } catch (error) {
+            console.error('Error parsing user data:', error);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            navigate('/login');
+            return;
+        }
         
         homeStore.setShowFollowingOnly(false);
-        fetchPosts(false);
+        fetchPosts();
     }, [navigate]);
 
-    const fetchPosts = async (followingOnly = false) => {
-        try {
-            const token = localStorage.getItem('token');
-            console.log('followingOnly:', followingOnly);
-            
-            if (!token) {
-                console.log('Nema tokena u browseru');
-                return;
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (showUserDropdown) {
+                setShowUserDropdown(false);
             }
+        };
 
-            console.log('Token prilikom poziva fetch posta:', token);
-            homeStore.setPostsLoading(true);
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [showUserDropdown]);
 
-            const endpoint = followingOnly 
-                ? 'http://localhost:6969/api/posts/following'
-                : 'http://localhost:6969/api/posts';
-
-            const response = await fetch(endpoint, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                homeStore.setPosts(data.data.posts);
-            } else {
-                console.error('Greška postovi:', data.message);
-                homeStore.setError(data.message || 'Failed to fetch posts');
-            }
-        } catch (error) {
-            console.error('Greška :', error);
-            homeStore.setError('Error loading posts');
-        } finally {
-            homeStore.setPostsLoading(false);
+    const fetchPosts = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.log('Nema tokena u browseru');
+            return;
         }
+        
+        await homeStore.fetchPosts();
     };    const handleCreatePost = async (e) => {
         e.preventDefault();
         if (!homeStore.newPost.trim()) return;
 
-        homeStore.setLoading(true);
-        homeStore.setError('');
-
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:6969/api/posts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ content: homeStore.newPost })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                homeStore.addPost(data.data);
-                homeStore.setNewPost('');
-            } else {
-                homeStore.setError(data.message || 'Failed to create post');
-            }
+            await homeStore.createPost(homeStore.newPost);
         } catch (error) {
             console.error('Error kod kreacije', error);
-            homeStore.setError('Failed to create post');
-        } finally {
-            homeStore.setLoading(false);
         }
     };
 
-    const handleToggleFilter = (followingOnly) => {
-        homeStore.setShowFollowingOnly(followingOnly);
-        homeStore.setPostsLoading(true);
-        fetchPosts(followingOnly);
-    };
+
 
     const handleLikePost = async (postId) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:6969/api/posts/${postId}/like`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            console.log('Like ', data); // debug
-            if (data.success) {
-                homeStore.updatePost(postId, {
-                    user_liked: data.data.isLiked,
-                    likes_count: data.data.likesCount
-                });
-            } else {
-                alert('Failed like/unlike');
-            }
+            await homeStore.likePost(postId);
         } catch (error) {
             console.log('Error sa postom', error);
             alert('Failed like/unlike');
@@ -137,17 +104,7 @@ const Home = observer(() => {
             
             if (!homeStore.comments[postId]) {
                 try {
-                    const token = localStorage.getItem('token');
-                    const response = await fetch(`http://localhost:6969/api/posts/${postId}/comments`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        homeStore.setComments(postId, data.data.comments);
-                    }
+                    await homeStore.fetchComments(postId);
                 } catch (error) {
                     console.error('Error comments:', error);
                 }
@@ -164,30 +121,9 @@ const Home = observer(() => {
         homeStore.setCommentLoading(postId, true);
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:6969/api/posts/${postId}/comments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ content: commentText })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                homeStore.addComment(postId, data.data);
-                homeStore.setNewComment(postId, '');
-                
-                homeStore.updatePost(postId, {
-                    comments_count: homeStore.posts.find(p => p.id === postId).comments_count + 1
-                });
-            } else {
-                homeStore.setError(data.message || 'Failed to post comment');
-            }
+            await homeStore.createComment(postId, commentText);
         } catch (error) {
-            console.error('Error comment:', error);
-            homeStore.setError('Failed comment');
+            console.error('Error submitting comment:', error);
         } finally {
             homeStore.setCommentLoading(postId, false);
         }
@@ -199,20 +135,7 @@ const Home = observer(() => {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:6969/api/posts/${postId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                homeStore.removePost(postId);
-            } else {
-                homeStore.setError(data.message || 'Failed to delete post');
-            }
+            await homeStore.deletePost(postId);
         } catch (error) {
             console.error('Error deleting post:', error);
             homeStore.setError('Failed to delete post');
@@ -234,184 +157,251 @@ const Home = observer(() => {
     const isOverLimit = characterCount > maxCharacters;
 
     return (
-        <div className="home-container">
-            <div className="home-content">
-                <header className="home-header">
-                    <h1 className="home-title">Home</h1>
-                    {userStore.user && (
-                        <span className="user-greeting">
-                            Welcome, <Link to={`/${userStore.user.username}`} className="user-greeting-link">@{userStore.user.username}</Link>
-                        </span>
-                    )}
-                    <div className="header-actions">
-                        <NotificationBell />
-                        <button 
-                            onClick={handleLogout}
-                            className="logout-btn"
-                        >
-                            Logout
-                        </button>
+        <div className="twitter-layout">
+            {/* Left Sidebar */}
+            <div className="sidebar">
+                <div className="sidebar-content">
+                    <div className="logo">
+                        <img src="/images/pas.jpeg" alt="X" style={{width: '100%', borderRadius: '50%'}} />
                     </div>
-                </header>
-
-                <div className="posts-filter">
-                    <button 
-                        className={`filter-btn ${!homeStore.showFollowingOnly ? 'active' : ''}`}
-                        onClick={() => handleToggleFilter(false)}
-                    >
-                        For you
-                    </button>
-                    <button 
-                        className={`filter-btn ${homeStore.showFollowingOnly ? 'active' : ''}`}
-                        onClick={() => handleToggleFilter(true)}
-                    >
-                        Following
-                    </button>
-                </div>
-
-                <div className="post-form-card">
-                    <form onSubmit={handleCreatePost} className="post-form">
-                        <textarea
-                            className="post-textarea"
-                            placeholder="What's happening?"
-                            value={homeStore.newPost}
-                            onChange={(e) => homeStore.setNewPost(e.target.value)}
-                            maxLength={320}
-                        />
-                        <div className="post-form-footer">
-                            <span className={`character-count ${isOverLimit ? 'warning' : ''}`}>
-                                {characterCount}/{maxCharacters}
-                            </span>
-                            <button 
-                                type="submit" 
-                                className="post-btn"
-                                disabled={homeStore.loading || !homeStore.newPost.trim() || isOverLimit}
-                            >
-                                {homeStore.loading ? 'Posting...' : 'Post'}
-                            </button>
+                    
+                    <nav>
+                        <div className="nav-item active" onClick={() => navigate('/')}>
+                            <House className="nav-icon" weight="fill" />
+                            <span>Home</span>
                         </div>
-                    </form>
-                    {homeStore.error && <div className="error-message">{homeStore.error}</div>}
+                        <div className="nav-item">
+                            <MagnifyingGlass className="nav-icon" />
+                            <span>Explore</span>
+                        </div>
+                        <div className="nav-item notification-nav">
+                            <NotificationBell />
+                        </div>
+                        <div className="nav-item">
+                            <Envelope className="nav-icon" />
+                            <span>Messages</span>
+                        </div>
+                        <div className="nav-item">
+                            <BookmarkSimple className="nav-icon" />
+                            <span>Bookmarks</span>
+                        </div>
+                        <div className="nav-item">
+                            <DotsThree className="nav-icon" />
+                            <span>More</span>
+                        </div>
+                    </nav>
+                    
+                    <div className="user-menu" onClick={(e) => {
+                        e.stopPropagation();
+                        setShowUserDropdown(!showUserDropdown);
+                    }}>
+                        <div className="user-info">
+                            <User className="user-profile-icon" size={24} />
+                        </div>
+                        {showUserDropdown && (
+                            <div className="user-dropdown">
+                                <button onClick={handleLogout} className="logout-dropdown-btn">
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="main-content">
+                <div className="main-header">
+                    <h1 className="header-title">Home</h1>
                 </div>
 
-                <div className="posts-feed">
+                <div className="tweet-compose">
+                    <div className="compose-container">
+                        <Link to={`/${userStore.user?.username}`} className="compose-avatar">
+                            <User size={24} />
+                        </Link>
+                        <form onSubmit={handleCreatePost} className="compose-form">
+                            <textarea
+                                className="compose-textarea"
+                                placeholder="What is happening?!"
+                                value={homeStore.newPost}
+                                onChange={(e) => homeStore.setNewPost(e.target.value)}
+                                maxLength={320}
+                            />
+                            <div className="compose-actions">
+                                <div className="compose-options">
+                                    <button type="button" className="compose-option">
+                                        <ImageSquare size={20} />
+                                    </button>
+                                    <button type="button" className="compose-option">
+                                        <Gif size={20} />
+                                    </button>
+                                    <button type="button" className="compose-option">
+                                        <ListBullets size={20} />
+                                    </button>
+                                    <button type="button" className="compose-option">
+                                        <SmileySticker size={20} />
+                                    </button>
+                                    <button type="button" className="compose-option">
+                                        <CalendarBlank size={20} />
+                                    </button>
+                                    <button type="button" className="compose-option">
+                                        <MapPin size={20} />
+                                    </button>
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="post-button"
+                                    disabled={homeStore.loading || !homeStore.newPost.trim() || isOverLimit}
+                                >
+                                    {homeStore.loading ? 'Posting...' : 'Post'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {homeStore.error && <div className="error">{homeStore.error}</div>}
+                </div>
+
+                <div className="posts-timeline">
                     {homeStore.postsLoading ? (
                         <div className="loading">Loading posts...</div>
-                    ) : homeStore.posts.length === 0 ? (
-                        <div className="welcome-card">
+                    ) : !Array.isArray(homeStore.posts) || homeStore.posts.length === 0 ? (
+                        <div className="empty-state">
                             <h3>No posts yet!</h3>
-                            <p>Be the first to share something with the world <RocketLaunch size={32} weight="light" /></p>
+                            <p>Be the first to share something with the world</p>
                         </div>
                     ) : (
                         homeStore.posts.map(post => (
-                            <div key={post.id} className="welcome-card">
-                                <div className="post-header">
-                                    <Link to={`/${post.username}`} className="post-avatar">
-                                        {post.avatar_url ? (
-                                            <img src={post.avatar_url} alt={post.username} />
-                                        ) : (
-                                            <span className="post-avatar-initial">
-                                                {(post.display_name || post.username).charAt(0).toUpperCase()}
-                                            </span>
-                                        )}
-                                    </Link>
-                                    <div className="post-user-info">
-                                        <Link to={`/${post.username}`} className="post-display-name-link">
-                                            <div className="post-display-name">{post.display_name || post.username}</div>
-                                        </Link>
-                                        <div className="post-username">
-                                            <Link to={`/${post.username}`} className="post-username-link">
-                                                @{post.username}
-                                            </Link> · {new Date(post.created_at).toLocaleDateString()}
+                            <article key={post.id} className="post-item">
+                                <div className="post-container">
+                                    <div className="post-avatar"></div>
+                                    <div className="post-content">
+                                        <div className="post-header">
+                                            <span className="post-author">{post.display_name || post.username}</span>
+                                            <span className="post-handle">@{post.username}</span>
+                                            <span className="post-time">·</span>
+                                            <span className="post-time">{new Date(post.created_at).toLocaleDateString()}</span>
+                                            {userStore.user && userStore.user.username === post.username && (
+                                                <button 
+                                                    className="post-action"
+                                                    onClick={() => handleDeletePost(post.id)}
+                                                    title="Delete post"
+                                                    style={{marginLeft: 'auto'}}
+                                                >
+                                                    <Trash className="action-icon" />
+                                                </button>
+                                            )}
                                         </div>
-                                    </div>
-                                    {userStore.user && userStore.user.username === post.username && (
-                                        <button 
-                                            className="delete-post-btn"
-                                            onClick={() => handleDeletePost(post.id)}
-                                            title="Delete post"
-                                        >
-                                            <Trash size={32} />
-                                        </button>
-                                    )}
-                                </div>
-                                <p className="post-content">{post.content}</p>
-                                {post.image_url && (
-                                    <img 
-                                        src={post.image_url} 
-                                        alt="Post" 
-                                        className="post-image"
-                                    />
-                                )}
-                                <div className="post-actions">
-                                    <span 
-                                        className="post-action-comment"
-                                        onClick={() => handleToggleComments(post.id)}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        <ChatCircleText size={32} /> {post.comments_count}
-                                    </span>
-                                    <span 
-                                        className={`post-action-like ${post.user_liked ? 'post-action-liked' : ''}`}
-                                        onClick={() => handleLikePost(post.id)}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        {post.user_liked ? <Heart size={32} weight="light" /> : <Heart size={32} weight="light" />} {post.likes_count}
-                                    </span>
-                                </div>
-                                
-                                {homeStore.showComments[post.id] && (
-                                    <div className="comments-section">
-                                        <div className="comments-list">
-                                            {homeStore.comments[post.id]?.map(comment => (
-                                                <div key={comment.id} className="comment-item">
-                                                    <div className="comment-header">
-                                                        <Link to={`/${comment.username}`} className="comment-avatar">
-                                                            {comment.avatar_url ? (
-                                                                <img src={comment.avatar_url} alt={comment.username} />
-                                                            ) : (
-                                                                <span className="comment-avatar-initial">
-                                                                    {(comment.display_name || comment.username).charAt(0).toUpperCase()}
-                                                                </span>
-                                                            )}
-                                                        </Link>
-                                                        <div className="comment-user-info">
-                                                            <Link to={`/${comment.username}`} className="comment-display-name">
-                                                                {comment.display_name || comment.username}
-                                                            </Link>
-                                                            <span className="comment-username">
-                                                                @{comment.username} · {new Date(comment.created_at).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <p className="comment-content">{comment.content}</p>
-                                                </div>
-                                            ))}
+                                        <div className="post-text">
+                                            {post.content}
+                                        </div>
+                                        {post.image_url && (
+                                            <img 
+                                                src={post.image_url} 
+                                                alt="Post" 
+                                                className="post-image"
+                                                style={{width: '100%', borderRadius: '1rem', marginTop: '0.75rem'}}
+                                            />
+                                        )}
+                                        <div className="post-actions">
+                                            <button 
+                                                className="post-action"
+                                                onClick={() => handleToggleComments(post.id)}
+                                            >
+                                                <ChatCircleText className="action-icon" />
+                                                <span>{post.comments_count}</span>
+                                            </button>
+                                            <button 
+                                                className={`post-action ${post.user_liked ? 'liked' : ''}`}
+                                                onClick={() => handleLikePost(post.id)}
+                                            >
+                                                <Heart className="action-icon" weight={post.user_liked ? 'fill' : 'regular'} />
+                                                <span>{post.likes_count}</span>
+                                            </button>
+                                            <button className="post-action">
+                                                <RocketLaunch className="action-icon" />
+                                            </button>
+                                            <button className="post-action">
+                                                <BookmarkSimple className="action-icon" />
+                                            </button>
                                         </div>
                                         
-                                        <form onSubmit={(e) => handleCommentSubmit(post.id, e)} className="comment-form">
-                                            <textarea
-                                                className="comment-textarea"
-                                                placeholder="Write a comment..."
-                                                value={homeStore.newComment[post.id] || ''}
-                                                onChange={(e) => homeStore.setNewComment(post.id, e.target.value)}
-                                                maxLength={280}
-                                                rows={2}
-                                            />
-                                            <button 
-                                                type="submit" 
-                                                className="comment-btn"
-                                                disabled={homeStore.commentLoading[post.id] || !(homeStore.newComment[post.id]?.trim())}
-                                            >
-                                                {homeStore.commentLoading[post.id] ? 'Posting...' : 'Comment'}
-                                            </button>
-                                        </form>
+                                        {homeStore.showComments[post.id] && (
+                                            <div className="comments-section" style={{marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgb(47, 51, 54)'}}>
+                                                <div className="comments-list">
+                                                    {homeStore.comments[post.id]?.map((comment, commentIndex) => (
+                                                        <div key={`comment-${comment.id}-${commentIndex}`} className="comment-item" style={{padding: '0.5rem 0', borderBottom: '1px solid rgb(47, 51, 54)'}}>
+                                                            <div style={{display: 'flex', alignItems: 'center', marginBottom: '0.25rem'}}>
+                                                                <div style={{width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: '#1d9bf0', marginRight: '0.5rem'}}></div>
+                                                                <span style={{fontWeight: '700', marginRight: '0.5rem'}}>{comment.display_name || comment.username}</span>
+                                                                <span style={{color: '#71767b'}}>@{comment.username}</span>
+                                                            </div>
+                                                            <p style={{marginLeft: '2rem', color: '#e7e9ea'}}>{comment.content}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                <form onSubmit={(e) => handleCommentSubmit(post.id, e)} style={{marginTop: '0.75rem', display: 'flex', gap: '0.5rem'}}>
+                                                    <textarea
+                                                        placeholder="Write a comment..."
+                                                        value={homeStore.newComment[post.id] || ''}
+                                                        onChange={(e) => homeStore.setNewComment(post.id, e.target.value)}
+                                                        maxLength={280}
+                                                        rows={2}
+                                                        style={{
+                                                            flex: 1,
+                                                            background: 'transparent',
+                                                            border: '1px solid rgb(47, 51, 54)',
+                                                            borderRadius: '0.5rem',
+                                                            color: '#e7e9ea',
+                                                            padding: '0.5rem',
+                                                            resize: 'none',
+                                                            fontFamily: 'inherit'
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        type="submit" 
+                                                        className="post-button"
+                                                        disabled={homeStore.commentLoading[post.id] || !(homeStore.newComment[post.id]?.trim())}
+                                                        style={{alignSelf: 'flex-end'}}
+                                                    >
+                                                        {homeStore.commentLoading[post.id] ? 'Posting...' : 'Comment'}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            </article>
                         ))
                     )}
                 </div>
+            </div>
+
+            <div className="right-sidebar">
+                <PremiumSubscription />
+                
+                <div className="trending-widget">
+                    <div className="widget-header">
+                        <h2 className="widget-title">What's happening</h2>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Trending in Technology</div>
+                        <div className="trending-topic">#WebDevelopment</div>
+                        <div className="trending-tweets">42.1K posts</div>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Trending</div>
+                        <div className="trending-topic">#ReactJS</div>
+                        <div className="trending-tweets">125K posts</div>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Technology · Trending</div>
+                        <div className="trending-topic">#JavaScript</div>
+                        <div className="trending-tweets">89.2K posts</div>
+                    </div>
+                </div>
+                
+                <WhoToFollow />
             </div>
         </div>
     );

@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/database');
 const { authenticateToken, optionalAuth } = require('../middlewares/auth');
+const { sendNotificationToUser } = require('../src/websocket/socketServer');
 
 const router = express.Router();
 
@@ -545,6 +546,39 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
       await query('UPDATE posts SET likes_count = likes_count + 1 WHERE id = ?', [postId]);
 
       isLikedResult = true;
+
+      if (post.user_id !== userId) {
+        try {
+          await query(`
+            INSERT INTO notifications (user_id, type, related_user_id, related_post_id, content) 
+            VALUES (?, 'like', ?, ?, ?)
+          `, [
+            post.user_id, 
+            userId, 
+            postId, 
+            `${req.user.username} liked your post`
+          ]);
+
+          const notification = {
+            id: Date.now(),
+            type: 'like',
+            message: `<strong>@${req.user.username}</strong> liked your post`,
+            from_user: {
+              id: userId,
+              username: req.user.username
+            },
+            post: {
+              id: postId
+            },
+            created_at: new Date().toISOString()
+          };
+
+          sendNotificationToUser(post.user_id, notification);
+          console.log(`Notification sent to user ${post.user_id}`);
+        } catch (notifError) {
+          console.error('Error sending notification:', notifError);
+        }
+      }
     }
 
     const updatedPost = await query('SELECT likes_count FROM posts WHERE id = ?', [postId]);

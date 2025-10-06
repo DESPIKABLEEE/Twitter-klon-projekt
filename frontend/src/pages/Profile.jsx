@@ -1,9 +1,27 @@
+// popravit da se prikazuje desni sidebar sa home pagea na profile pageu
 import React, { useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { userStore, profileStore } from '../stores';
-import { Trash, ChatCircleText, Heart, Calendar, ArrowLeft  } from "@phosphor-icons/react";
+import './TwitterHome.css';
+import { 
+    Trash, 
+    ChatCircleText, 
+    Heart, 
+    Calendar, 
+    ArrowLeft, 
+    House,
+    MagnifyingGlass,
+    Bell,
+    Envelope,
+    BookmarkSimple,
+    User,
+    DotsThree,
+    Plus
+} from "@phosphor-icons/react";
 import FollowModal from '../components/FollowModal';
+import NotificationBell from '../components/NotificationBell';
+import './TwitterHome.css';
 import './Profile.css';
 
 const Profile = observer(() => {
@@ -52,6 +70,17 @@ const Profile = observer(() => {
         }
     }, [username, navigate, fetchProfile]);
 
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (profileStore.showUserDropdown) {
+                profileStore.closeUserDropdown();
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    });
+
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -64,7 +93,7 @@ const Profile = observer(() => {
         try {
             const token = localStorage.getItem('token');
             
-            const response = await fetch(`http://localhost:6969/api/users/${username}/follow`, {
+            const response = await fetch(`http://localhost:6969/api/users/${profileStore.profileData.user.id}/follow`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -88,71 +117,17 @@ const Profile = observer(() => {
     };
 
     const handleShowFollowers = async () => {
-        try {
-            profileStore.setModalLoading(true);
-            profileStore.openModal('followers');
-            
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:6969/api/users/${username}/followers`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.setModalData(data.data.followers);
-            }
-        } catch (error) {
-            console.error('Error followers:', error);
-        } finally {
-            profileStore.setModalLoading(false);
-        }
+        profileStore.openModal('followers');
+        await profileStore.fetchFollowers(username);
     };
 
     const handleShowFollowing = async () => {
-        try {
-            profileStore.setModalLoading(true);
-            profileStore.openModal('following');
-            
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:6969/api/users/${username}/following`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.setModalData(data.data.following);
-            }
-        } catch (error) {
-            console.error('Error following:', error);
-        } finally {
-            profileStore.setModalLoading(false);
-        }
+        profileStore.openModal('following');
+        await profileStore.fetchFollowing(username);
     };
 
     const handleLikePost = async (postId) => {
-        try {
-            const token = userStore.token;
-            const response = await fetch(`http://localhost:6969/api/posts/${postId}/like`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.updatePost(postId, {
-                    user_liked: data.data.isLiked,
-                    likes_count: data.data.likesCount
-                });
-            }
-        } catch (error) {
-            console.error('Error like:', error);
-        }
+        await profileStore.likePost(postId);
     };
 
     const handleToggleComments = async (postId) => {
@@ -162,21 +137,7 @@ const Profile = observer(() => {
             profileStore.toggleComments(postId);
             
             if (!profileStore.comments[postId]) {
-                try {
-                    const token = userStore.token;
-                    const response = await fetch(`http://localhost:6969/api/posts/${postId}/comments`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                        profileStore.setComments(postId, data.data.comments);
-                    }
-                } catch (error) {
-                    console.error('Error comments:', error);
-                }
+                await profileStore.fetchComments(postId);
             }
         }
     };
@@ -190,24 +151,7 @@ const Profile = observer(() => {
         profileStore.setCommentLoading(postId, true);
 
         try {
-            const token = userStore.token;
-            const response = await fetch(`http://localhost:6969/api/posts/${postId}/comments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ content: commentText })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.addComment(postId, data.data);
-                profileStore.setNewComment(postId, '');
-                profileStore.updatePost(postId, {
-                    comments_count: profileStore.profileData.posts.find(p => p.id === postId).comments_count + 1
-                });
-            }
+            await profileStore.createComment(postId, commentText);
         } catch (error) {
             console.error('Error comment:', error);
         } finally {
@@ -221,18 +165,7 @@ const Profile = observer(() => {
         }
 
         try {
-            const token = userStore.token;
-            const response = await fetch(`http://localhost:6969/api/posts/${postId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.removePost(postId);
-            }
+            await profileStore.deletePost(postId);
         } catch (error) {
             console.error('Error post:', error);
         }
@@ -260,181 +193,264 @@ const Profile = observer(() => {
     const { user, posts } = profileStore.profileData;
 
     return (
-        <div className="profile-container">
-            <div className="profile-content">
-                <header className="profile-header">
-                    <div className="profile-nav">
-                        <Link to="/" className="back-link">← Home</Link>
-                        <h1 className="profile-title">{user.display_name || user.username}</h1>
-                        <div className="profile-actions">
-                            <button onClick={handleLogout} className="logout-btn">
-                                Logout
-                            </button>
-                        </div>
+        <div className="twitter-layout">
+            {/* Left Sidebar */}
+            <div className="sidebar">
+                <div className="sidebar-content">
+                    <div className="logo">
+                        <img src="/images/pas.jpeg" alt="X" style={{width: '100%', borderRadius: '50%'}} />
                     </div>
-                </header>
-
-                <div className="profile-info-card">
-                    <div className="profile-info">
-                        <div className="profile-avatar-section">
-                            <div className="profile-avatar">
-                                {user.avatar_url ? (
-                                    <img src={user.avatar_url} alt={user.username} />
-                                ) : (
-                                    <span className="profile-avatar-initial">
-                                        {(user.display_name || user.username).charAt(0).toUpperCase()}
-                                    </span>
-                                )}
-                            </div>
+                    
+                    <nav>
+                        <div className="nav-item" onClick={() => navigate('/')}>
+                            <House className="nav-icon" weight="fill" />
+                            <span>Home</span>
                         </div>
-
-                        <div className="profile-details">
-                            <h2 className="profile-display-name">{user.display_name || user.username}</h2>
-                            <p className="profile-username">@{user.username}</p>
-                            
-                            {user.bio && <p className="profile-bio">{user.bio}</p>}
-                            
-                            <div className="profile-meta">
-                                <span className="profile-meta-item">
-                                    <Calendar size={32} weight="light" /> Joined {new Date(user.created_at).toLocaleDateString()}
-                                </span>
+                        <div className="nav-item">
+                            <MagnifyingGlass className="nav-icon" />
+                            <span>Explore</span>
+                        </div>
+                        <div className="nav-item notification-nav">
+                            <NotificationBell />
+                        </div>
+                        <div className="nav-item">
+                            <Envelope className="nav-icon" />
+                            <span>Messages</span>
+                        </div>
+                        <div className="nav-item">
+                            <BookmarkSimple className="nav-icon" />
+                            <span>Bookmarks</span>
+                        </div>
+                        <div className="nav-item">
+                            <DotsThree className="nav-icon" />
+                            <span>More</span>
+                        </div>
+                    </nav>
+                    
+                    <div className="user-menu" onClick={(e) => {
+                        e.stopPropagation();
+                        profileStore.toggleUserDropdown();
+                    }}>
+                        <div className="user-info">
+                            <User className="user-profile-icon" size={24} />
+                        </div>
+                        {profileStore.showUserDropdown && (
+                            <div className="user-dropdown">
+                                <button onClick={handleLogout} className="logout-dropdown-btn">
+                                    Logout
+                                </button>
                             </div>
+                        )}
+                    </div>
+                </div>
+            </div>
 
-                            <div className="profile-stats">
-                                <span className="profile-stat" onClick={handleShowFollowing} style={{ cursor: 'pointer' }}>
-                                    <strong>{user.following_count || 0}</strong> Following
-                                </span>
-                                <span className="profile-stat" onClick={handleShowFollowers} style={{ cursor: 'pointer' }}>
-                                    <strong>{user.followers_count || 0}</strong> Followers
-                                </span>
-                            </div>
-
-                            {!user.isOwnProfile && (
-                                <div className="profile-follow-action">
-                                    <button 
-                                        className={`follow-btn ${user.isFollowing ? 'following' : ''}`}
-                                        onClick={handleFollowToggle}
-                                    >
-                                        {user.isFollowing ? 'Following' : 'Follow'}
-                                    </button>
-                                </div>
-                            )}
+            {/* Main Content */}
+            <div className="main-content">
+                <div className="main-header">
+                    <div style={{display: 'flex', alignItems: 'center', gap: '2rem'}}>
+                        <ArrowLeft 
+                            size={20} 
+                            style={{cursor: 'pointer'}} 
+                            onClick={() => navigate('/')}
+                        />
+                        <div>
+                            <h1 className="header-title">{user.display_name || user.username}</h1>
+                            <p className="header-subtitle">
+                                {posts?.length || 0} posts
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="profile-posts">
-                    <h3 className="posts-title">Posts</h3>
+                <div className="profile-banner"></div>
+                
+                <div className="profile-info">
+                    <div className="profile-header-row">
+                        <div className="profile-avatar-large">
+                            {user.avatar_url ? (
+                                <img src={user.avatar_url} alt={user.username} />
+                            ) : (
+                                (user.display_name || user.username).charAt(0).toUpperCase()
+                            )}
+                        </div>
+                        
+                        <div className="profile-actions">
+                            {!user.isOwnProfile ? (
+                                <button 
+                                    className={`profile-follow-btn ${user.isFollowing ? 'following' : ''}`}
+                                    onClick={handleFollowToggle}
+                                >
+                                    {user.isFollowing ? 'Following' : 'Follow'}
+                                </button>
+                            ) : (
+                                <button className="profile-edit-btn">
+                                    Edit profile
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="profile-details-section">
+                        <h2 className="profile-display-name">
+                            {user.display_name || user.username}
+                        </h2>
+                        <p className="profile-handle">
+                            @{user.username}
+                        </p>
+                    </div>
+                    
+                    {user.bio && (
+                        <p className="profile-bio">
+                            {user.bio}
+                        </p>
+                    )}
+                    
+                    <div className="profile-joined-date">
+                        <Calendar size={16} />
+                        <span>Joined {new Date(user.created_at).toLocaleDateString('en-US', {month: 'long', year: 'numeric'})}</span>
+                    </div>
+                    
+                    <div className="profile-stats">
+                        <button 
+                            className="profile-stat-btn"
+                            onClick={handleShowFollowing}
+                        >
+                            <span className="profile-stat-number">{user.following_count || 0}</span>
+                            <span className="profile-stat-label">Following</span>
+                        </button>
+                        <button 
+                            className="profile-stat-btn"
+                            onClick={handleShowFollowers}
+                        >
+                            <span className="profile-stat-number">{user.followers_count || 0}</span>
+                            <span className="profile-stat-label">Followers</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="profile-tabs">
+                    <button className="profile-tab active">
+                        Posts
+                    </button>
+                    <button className="profile-tab">
+                        Replies
+                    </button>
+                    <button className="profile-tab">
+                        Media
+                    </button>
+                </div>
+
+                <div className="posts-timeline">
                     {!posts || posts.length === 0 ? (
-                        <div className="no-posts">
-                            <p>{user.isOwnProfile ? "You haven't posted anything yet" : `${user.display_name || user.username} hasn't posted anything yet`}</p>
+                        <div className="empty-state">
+                            <h3>No Posts yet</h3>
+                            <p>When {user.isOwnProfile ? 'you' : `@${user.username}`} post{user.isOwnProfile ? '' : 's'}, {user.isOwnProfile ? 'they' : 'it'} will show up here.</p>
                         </div>
                     ) : (
-                        <div className="posts-feed">
-                            {posts.map(post => (
-                                <div key={post.id} className="post-card">
-                                    <div className="post-header">
-                                        <div className="post-avatar">
-                                            {post.avatar_url ? (
-                                                <img src={post.avatar_url} alt={post.username} />
-                                            ) : (
-                                                <span className="post-avatar-initial">
-                                                    {(post.display_name || post.username).charAt(0).toUpperCase()}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="post-user-info">
-                                            <div className="post-display-name">{post.display_name || post.username}</div>
-                                            <div className="post-username">
-                                                @{post.username} · {new Date(post.created_at).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                        {userStore.user && userStore.user.username === post.username && (
-                                            <button 
-                                                className="delete-post-btn"
-                                                onClick={() => handleDeletePost(post.id)}
-                                                title="Delete post"
-                                            >
-                                                <Trash size={20} />
-                                            </button>
+                        posts.map((post, index) => (
+                            <article key={`profile-post-${post.id}-${index}`} className="post-item">
+                                <div className="post-container">
+                                    <div className="post-avatar">
+                                        {post.avatar_url ? (
+                                            <img src={post.avatar_url} alt={post.username} />
+                                        ) : (
+                                            (post.display_name || post.username).charAt(0).toUpperCase()
                                         )}
                                     </div>
-                                    <p className="post-content">{post.content}</p>
-                                    {post.image_url && (
-                                        <img 
-                                            src={post.image_url} 
-                                            alt="Post" 
-                                            className="post-image"
-                                        />
-                                    )}
-                                    <div className="post-actions">
-                                        <span 
-                                            className="post-action-comment"
-                                            onClick={() => handleToggleComments(post.id)}
-                                            style={{ cursor: 'pointer' }}
-                                        >
-                                            <ChatCircleText size={32} /> {post.comments_count}
-                                        </span>
-                                        <span 
-                                            className={`post-action-like ${post.user_liked ? 'post-action-liked' : ''}`}
-                                            onClick={() => handleLikePost(post.id)}
-                                            style={{ cursor: 'pointer' }}
-                                        >
-                                            {post.user_liked ? <Heart size={32} weight="light" /> : <Heart size={32} weight="light" />} {post.likes_count}
-                                        </span>
-                                    </div>
-                                    
-                                    {profileStore.showComments[post.id] && (
-                                        <div className="comments-section">
-                                            <div className="comments-list">
-                                                {profileStore.comments[post.id]?.map(comment => (
-                                                    <div key={comment.id} className="comment-item">
-                                                        <div className="comment-header">
-                                                            <Link to={`/${comment.username}`} className="comment-avatar">
-                                                                {comment.avatar_url ? (
-                                                                    <img src={comment.avatar_url} alt={comment.username} />
-                                                                ) : (
-                                                                    <span className="comment-avatar-initial">
-                                                                        {(comment.display_name || comment.username).charAt(0).toUpperCase()}
-                                                                    </span>
-                                                                )}
-                                                            </Link>
-                                                            <div className="comment-user-info">
-                                                                <Link to={`/${comment.username}`} className="comment-display-name">
-                                                                    {comment.display_name || comment.username}
-                                                                </Link>
-                                                                <span className="comment-username">
-                                                                    @{comment.username} · {new Date(comment.created_at).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <p className="comment-content">{comment.content}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            <form onSubmit={(e) => handleCommentSubmit(post.id, e)} className="comment-form">
-                                                <textarea
-                                                    className="comment-textarea"
-                                                    placeholder="Write a comment..."
-                                                    value={profileStore.newComment[post.id] || ''}
-                                                    onChange={(e) => profileStore.setNewComment(post.id, e.target.value)}
-                                                    maxLength={280}
-                                                    rows={2}
-                                                />
+                                    <div className="post-content">
+                                        <div className="post-header">
+                                            <span className="post-author">{post.display_name || post.username}</span>
+                                            <span className="post-handle">@{post.username}</span>
+                                            <span className="post-time">·</span>
+                                            <span className="post-time">{new Date(post.created_at).toLocaleDateString()}</span>
+                                            {userStore.user && userStore.user.username === post.username && (
                                                 <button 
-                                                    type="submit" 
-                                                    className="comment-btn"
-                                                    disabled={profileStore.commentLoading[post.id] || !(profileStore.newComment[post.id]?.trim())}
+                                                    className="post-action"
+                                                    onClick={() => handleDeletePost(post.id)}
+                                                    title="Delete post"
                                                 >
-                                                    {profileStore.commentLoading[post.id] ? 'Posting...' : 'Comment'}
+                                                    <Trash className="action-icon" size={16} />
                                                 </button>
-                                            </form>
+                                            )}
                                         </div>
-                                    )}
+                                        <div className="post-text">
+                                            {post.content}
+                                        </div>
+                                        {post.image_url && (
+                                            <img 
+                                                src={post.image_url} 
+                                                alt="Post" 
+                                                className="post-image"
+                                            />
+                                        )}
+                                        <div className="post-actions">
+                                            <button 
+                                                className="post-action"
+                                                onClick={() => handleToggleComments(post.id)}
+                                            >
+                                                <ChatCircleText className="action-icon" size={16} />
+                                                <span>{post.comments_count || 0}</span>
+                                            </button>
+                                            <button 
+                                                className={`post-action ${post.user_liked ? 'liked' : ''}`}
+                                                onClick={() => handleLikePost(post.id)}
+                                            >
+                                                <Heart className="action-icon" size={16} weight={post.user_liked ? 'fill' : 'regular'} />
+                                                <span>{post.likes_count || 0}</span>
+                                            </button>
+                                            <button className="post-action">
+                                                <BookmarkSimple className="action-icon" size={16} />
+                                            </button>
+                                        </div>
+                                        
+                                        {profileStore.showComments[post.id] && (
+                                            <div className="comments-section">
+                                                <div className="comments-list">
+                                                    {profileStore.comments[post.id]?.map(comment => (
+                                                        <div key={comment.id} className="comment-item">
+                                                            <div className="comment-header">
+                                                                <div className="comment-avatar">
+                                                                    {comment.avatar_url ? (
+                                                                        <img src={comment.avatar_url} alt={comment.username} />
+                                                                    ) : (
+                                                                        <span className="comment-initial">
+                                                                            {(comment.display_name || comment.username).charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="comment-author">{comment.display_name || comment.username}</span>
+                                                                <span className="comment-handle">@{comment.username}</span>
+                                                                <span className="comment-time">·</span>
+                                                                <span className="comment-time">{new Date(comment.created_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <p className="comment-content">{comment.content}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                <form onSubmit={(e) => handleCommentSubmit(post.id, e)} className="comment-form">
+                                                    <textarea
+                                                        className="comment-textarea"
+                                                        placeholder="Post your reply"
+                                                        value={profileStore.newComment[post.id] || ''}
+                                                        onChange={(e) => profileStore.setNewComment(post.id, e.target.value)}
+                                                        maxLength={280}
+                                                    />
+                                                    <button 
+                                                        type="submit" 
+                                                        className="comment-submit-btn"
+                                                        disabled={profileStore.commentLoading[post.id] || !(profileStore.newComment[post.id]?.trim())}
+                                                    >
+                                                        {profileStore.commentLoading[post.id] ? 'Posting...' : 'Comment'}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
+                            </article>
+                        ))
                     )}
                 </div>
             </div>

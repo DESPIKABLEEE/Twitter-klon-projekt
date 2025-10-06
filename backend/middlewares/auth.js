@@ -23,7 +23,7 @@ const authenticateToken = async (req, res, next) => {
     if (users.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Nepravilan token'
+        message: 'Ne postoji user'
       });
     }
 

@@ -1,41 +1,23 @@
-/* popravit bordere na home pageu, tako da im smanjim broj */
 .twitter-layout {
     display: flex;
-    justify-content: center;
     min-height: 100vh;
     background-color: #000;
     color: #e7e9ea;
     font-family: system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    max-width: 1260px;
-    margin: 0 auto;
-    padding: 0 10px;
 }
 
 .sidebar {
     width: 275px;
-    position: sticky;
-    top: 0;
+    padding: 0 2rem;
+    border-right: 1px solid rgb(47, 51, 54);
+    position: fixed;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.main-content {
-    width: 600px;
-    min-height: 100vh;
-}
-
-.right-sidebar {
-    width: 350px;
-    position: sticky;
+    left: 0;
     top: 0;
-    height: 100vh;
-    padding-left: 20px;
 }
 
 .sidebar-content {
-    padding: 0.75rem 1rem;
+    padding-top: 0.75rem;
 }
 
 .logo {
@@ -206,15 +188,14 @@
     font-size: 0.9375rem;
 }
 
-/* Main Content */
 .main-content {
     flex: 1;
-    border-left: 1px solid rgb(47, 51, 54);
+    margin-left: 275px;
+    margin-right: 350px;
     border-right: 1px solid rgb(47, 51, 54);
     min-height: 100vh;
 }
 
-/* Header */
 .main-header {
     position: sticky;
     top: 0;
@@ -231,7 +212,6 @@
     margin: 0;
 }
 
-/* Tweet Compose */
 .tweet-compose {
     border-bottom: 1px solid rgb(47, 51, 54);
     padding: 1rem;
@@ -331,12 +311,10 @@
     cursor: not-allowed;
 }
 
-/* Posts Timeline */
 .posts-timeline {
     min-height: 50vh;
 }
 
-/* Post Item */
 .post-item {
     border-bottom: 1px solid rgb(47, 51, 54);
     padding: 0.75rem 1rem;
@@ -429,13 +407,14 @@
     margin-right: 0.25rem;
 }
 
-/* Right Sidebar */
 .right-sidebar {
-    flex: 0 0 28%;
-    position: sticky;
+    width: 350px;
+    padding: 0 2rem;
+    position: fixed;
+    right: 0;
     top: 0;
     height: 100vh;
-    padding-left: 20px;
+    overflow-y: auto;
 }
 
 .trending-widget {
@@ -565,7 +544,6 @@
     }
 } */
 
-/* Profile Specific Styles */
 .profile-banner {
     height: 200px;
     background: linear-gradient(45deg, #1d9bf0, #8b5cf6);

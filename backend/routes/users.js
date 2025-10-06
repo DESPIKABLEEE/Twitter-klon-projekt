@@ -3,6 +3,37 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { optionalAuth, authenticateToken } = require('../middlewares/auth');
 
+router.get('/suggested', authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+
+    const suggestedUsers = await query(`
+      SELECT u.id, u.username, u.display_name, u.avatar_url, u.followers_count
+      FROM users u
+      WHERE u.id != ? 
+      AND u.id NOT IN (
+        SELECT following_id 
+        FROM follows 
+        WHERE follower_id = ?
+      )
+      ORDER BY RAND()
+      LIMIT 3
+    `, [currentUserId, currentUserId]);
+
+    res.json({
+      success: true,
+      data: { users: suggestedUsers }
+    });
+
+  } catch (error) {
+    console.log('GET_SUGGESTED_USERS', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 router.get('/:username/followers', optionalAuth, async (req, res) => {
   try {
     const { username } = req.params;
@@ -43,7 +74,6 @@ router.get('/:username/followers', optionalAuth, async (req, res) => {
   }
 });
 
-// Get following list - must be before /:username route
 router.get('/:username/following', optionalAuth, async (req, res) => {
   try {
     const { username } = req.params;
@@ -153,14 +183,14 @@ router.get('/:username', optionalAuth, async (req, res) => {
   }
 });
 
-router.post('/:username/follow', authenticateToken, async (req, res) => {
+router.post('/:userId/follow', authenticateToken, async (req, res) => {
   try {
-    const { username } = req.params;
+    const { userId } = req.params;
     const currentUserId = req.user.id;
 
     const targetUserResult = await query(
-      'SELECT id FROM users WHERE username = ?',
-      [username]
+      'SELECT id FROM users WHERE id = ?',
+      [userId]
     );
 
     if (targetUserResult.length === 0) {

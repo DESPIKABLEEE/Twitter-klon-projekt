@@ -4,6 +4,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+// const session = require('express-session');
+// const passport = require('passport');
 require('dotenv').config();
 
 const db = require('./config/database');
@@ -35,6 +37,22 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 app.use(morgan('combined'));
+
+// Session configuration - DISABLED for now
+// app.use(session({
+//   secret: process.env.JWT_SECRET || 'your-session-secret-key',
+//   resave: false,
+//   saveUninitialized: false,
+//   cookie: {
+//     secure: process.env.NODE_ENV === 'production',
+//     httpOnly: true,
+//     maxAge: 24 * 60 * 60 * 1000 // 24 hours
+//   }
+// }));
+
+// Passport middleware - DISABLED, using manual OAuth
+// app.use(passport.initialize());
+// app.use(passport.session());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

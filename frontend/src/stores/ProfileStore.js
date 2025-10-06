@@ -1,4 +1,6 @@
 import { makeAutoObservable } from 'mobx'
+import UserService from '../services/UserService'
+import PostService from '../services/PostService'
 
 class ProfileStore {
   profileData = null
@@ -10,9 +12,10 @@ class ProfileStore {
   commentLoading = {}
   
   showModal = false
-  modalType = '' // 'followers' or 'following'
+  modalType = '' // ili followers ili following
   modalData = []
   modalLoading = false
+  showUserDropdown = false
   
   constructor() {
     makeAutoObservable(this)
@@ -108,6 +111,93 @@ class ProfileStore {
     this.modalData = data
   }
   
+  toggleUserDropdown() {
+    this.showUserDropdown = !this.showUserDropdown
+  }
+  
+  closeUserDropdown() {
+    this.showUserDropdown = false
+  }
+  
+  async fetchFollowers(username) {
+    try {
+      this.setModalLoading(true);
+      const data = await UserService.getFollowers(username);
+      this.setModalData(data.followers);
+    } catch (error) {
+      console.error('Error fetching followers:', error);
+      this.setError('Failed to load followers');
+    } finally {
+      this.setModalLoading(false);
+    }
+  }
+
+  async fetchFollowing(username) {
+    try {
+      this.setModalLoading(true);
+      const data = await UserService.getFollowing(username);
+      this.setModalData(data.following);
+    } catch (error) {
+      console.error('Error fetching following:', error);
+      this.setError('Failed to load following');
+    } finally {
+      this.setModalLoading(false);
+    }
+  }
+
+  async likePost(postId) {
+    try {
+      const response = await PostService.likePost(postId);
+      this.updatePost(postId, {
+        user_liked: response.data.isLiked,
+        likes_count: response.data.likesCount
+      });
+    } catch (error) {
+      console.error('Error liking post:', error);
+    }
+  }
+
+  async fetchComments(postId) {
+    try {
+      const response = await PostService.fetchComments(postId);
+      if (response.success) {
+        this.setComments(postId, response.data.comments);
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  }
+
+  async createComment(postId, content) {
+    try {
+      const response = await PostService.createComment(postId, content);
+      if (response.success) {
+        this.addComment(postId, response.data);
+        this.setNewComment(postId, '');
+        
+        const post = this.profileData.posts.find(p => p.id === postId);
+        if (post) {
+          this.updatePost(postId, {
+            comments_count: post.comments_count + 1
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error creating comment:', error);
+    }
+  }
+
+  async deletePost(postId) {
+    try {
+      const response = await PostService.deletePost(postId);
+      if (response.success) {
+        this.removePost(postId);
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+    }
+  }
+
   reset() {
     this.profileData = null
     this.loading = true
@@ -119,6 +209,7 @@ class ProfileStore {
     this.showModal = false
     this.modalType = ''
     this.modalData = []
+    this.showUserDropdown = false
   }
 }
 

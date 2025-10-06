@@ -39,6 +39,10 @@ services:
       DB_PASSWORD: twitter_password
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       PORT: 6969
+      GOOGLE_CLIENT_ID: DUMMY
+      GOOGLE_CLIENT_SECRET: DUMMY
+      BASE_URL: http://localhost:6969
+      FRONTEND_URL: http://localhost:5173
     ports:
       - "6969:6969"
     volumes:

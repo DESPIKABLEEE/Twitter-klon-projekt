@@ -1,4 +1,5 @@
 import { makeAutoObservable } from 'mobx';
+import PostService from '../services/PostService';
 
 class HomeStore {
     posts = [];
@@ -6,6 +7,7 @@ class HomeStore {
     loading = false;
     postsLoading = false;
     error = '';
+
     showComments = {};
     comments = {};
     newComment = {};
@@ -17,7 +19,7 @@ class HomeStore {
     }
 
     setPosts = (posts) => {
-        this.posts = posts;
+        this.posts = Array.isArray(posts) ? posts : []; //bitno
     };
 
     addPost = (post) => {
@@ -80,6 +82,115 @@ class HomeStore {
 
     resetNewPost = () => {
         this.newPost = '';
+    };
+
+    fetchPosts = async () => {
+        try {
+            this.setPostsLoading(true);
+            this.setError('');
+            const response = await PostService.fetchPosts();
+            const posts = response.data?.posts || response.posts || response || [];
+            this.setPosts(Array.isArray(posts) ? posts : []);
+        } catch (error) {
+            this.setError(error.message);
+            this.setPosts([]); 
+        } finally {
+            this.setPostsLoading(false);
+        }
+    };
+
+    createPost = async (content, image = null) => {
+        try {
+            this.setLoading(true);
+            this.setError('');
+            const newPost = await PostService.createPost(content, image); // moram dodat i za slike
+            this.addPost(newPost);
+            this.resetNewPost();
+            await this.fetchPosts();
+            return newPost;
+        } catch (error) {
+            this.setError(error.message);
+            throw error;
+        } finally {
+            this.setLoading(false);
+        }
+    };
+
+    likePost = async (postId) => {
+        try {
+            const post = this.posts.find(p => p.id === postId);
+            if (post) {
+                const wasLiked = post.user_liked;
+                this.updatePost(postId, {
+                    user_liked: !wasLiked,
+                    likes_count: wasLiked ? post.likes_count - 1 : post.likes_count + 1
+                });
+
+                const response = await PostService.likePost(postId);
+                
+                this.updatePost(postId, {
+                    user_liked: response.data.isLiked,
+                    likes_count: response.data.likesCount
+                });
+            }
+        } catch (error) {
+            const post = this.posts.find(p => p.id === postId);
+            if (post) {
+                this.updatePost(postId, {
+                    user_liked: !post.user_liked,
+                    likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1
+                });
+            }
+            console.error('Error toggling like:', error);
+        }
+    };
+
+    fetchComments = async (postId) => {
+        try {
+            const response = await PostService.fetchComments(postId);
+            if (response.success) {
+                this.setComments(postId, response.data.comments);
+            }
+            return response;
+        } catch (error) {
+            console.error('Error fetching comments:', error);
+            throw error;
+        }
+    };
+
+    createComment = async (postId, content) => {
+        try {
+            const response = await PostService.createComment(postId, content);
+            if (response.success) {
+                this.addComment(postId, response.data);
+                this.setNewComment(postId, '');
+                
+                // Update comment count
+                const post = this.posts.find(p => p.id === postId);
+                if (post) {
+                    this.updatePost(postId, {
+                        comments_count: post.comments_count + 1
+                    });
+                }
+            }
+            return response;
+        } catch (error) {
+            console.error('Error creating comment:', error);
+            throw error;
+        }
+    };
+
+    deletePost = async (postId) => {
+        try {
+            const response = await PostService.deletePost(postId);
+            if (response.success) {
+                this.removePost(postId);
+            }
+            return response;
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            throw error;
+        }
     };
 }
 

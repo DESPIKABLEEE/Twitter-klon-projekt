@@ -30,7 +30,7 @@ const FollowModal = observer(({ profileStore }) => {
         <div className="modal-body">
           {profileStore.modalLoading ? (
             <div className="modal-loading">Loading...</div>
-          ) : profileStore.modalData.length === 0 ? (
+          ) : !profileStore.modalData || profileStore.modalData.length === 0 ? (
             <div className="modal-empty">
               No {profileStore.modalType} yet.
             </div>

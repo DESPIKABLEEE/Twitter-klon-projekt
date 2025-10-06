@@ -1,0 +1,81 @@
+.premium-widget {
+  background: rgb(22, 24, 28);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgb(47, 51, 54);
+}
+
+.premium-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgb(47, 51, 54);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.premium-header svg {
+  color: rgb(255, 212, 0);
+}
+
+.premium-title {
+  color: rgb(231, 233, 234);
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.premium-content {
+  padding: 16px;
+}
+
+.premium-description {
+  color: rgb(231, 233, 234);
+  font-size: 15px;
+  line-height: 20px;
+  margin: 0 0 12px 0;
+}
+
+.premium-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+}
+
+.premium-features li {
+  color: rgb(231, 233, 234);
+  font-size: 15px;
+  line-height: 20px;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.premium-features li svg {
+  color: rgb(29, 155, 240);
+  flex-shrink: 0;
+}
+
+.subscribe-btn {
+  background: rgb(29, 155, 240);
+  color: rgb(255, 255, 255);
+  border: 1px solid rgb(29, 155, 240);
+  border-radius: 20px;
+  padding: 8px 24px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: center;
+}
+
+.subscribe-btn:hover {
+  background: rgb(26, 140, 216);
+  border-color: rgb(26, 140, 216);
+}
+
+.subscribe-btn:active {
+  background: rgb(24, 113, 184);
+  border-color: rgb(24, 113, 184);
+}

@@ -3,7 +3,7 @@
     color: #e7e9ea;
     min-height: 100vh;
     padding: 2rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .profile-content {
@@ -41,6 +41,7 @@
 
 .profile-actions {
     display: flex;
+    align-items: center;
     gap: 1rem;
 }
 
@@ -372,9 +373,9 @@
     text-align: center;
 }
 
-.post-header {
+/* .post-header {
     position: relative;
-}
+} */
 
 .delete-post-btn {
     position: absolute;
