@@ -243,6 +243,43 @@ router.post('/', authenticateToken, [
       WHERE p.id = ?
     `, [result.insertId]);
 
+    if (followers.length > 0) {
+      try {
+        for (const follower of followers) {
+          const insertResult = await query(`
+            INSERT INTO notifications (user_id, type, related_user_id, related_post_id, content, created_at)
+            VALUES (?, 'new_post', ?, ?, ?, NOW())
+          `, [
+            follower.follower_id,
+            userId,
+            result.insertId,
+            `<strong>@${currentUser[0].username}</strong> posted something new`
+          ]);
+
+          const notificationId = insertResult.insertId;
+
+          const notification = {
+            id: notificationId,
+            type: 'new_post',
+            message: `<strong>@${currentUser[0].username}</strong> posted something new`,
+            from_user: {
+              id: userId,
+              username: currentUser[0].username
+            },
+            post: {
+              id: result.insertId
+            },
+            created_at: new Date().toISOString()
+          };
+
+          sendNotificationToUser(follower.follower_id, notification);
+          console.log(`New post notification sent to user ${follower.follower_id}`);
+        }
+      } catch (notifError) {
+        console.error('Error sending new post notifications:', notifError);
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: 'Post kreiran',
@@ -549,7 +586,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
 
       if (post.user_id !== userId) {
         try {
-          await query(`
+          const insertResult = await query(`
             INSERT INTO notifications (user_id, type, related_user_id, related_post_id, content) 
             VALUES (?, 'like', ?, ?, ?)
           `, [
@@ -559,8 +596,10 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
             `${req.user.username} liked your post`
           ]);
 
+          const notificationId = insertResult.insertId;
+
           const notification = {
-            id: Date.now(),
+            id: notificationId,
             type: 'like',
             message: `<strong>@${req.user.username}</strong> liked your post`,
             from_user: {

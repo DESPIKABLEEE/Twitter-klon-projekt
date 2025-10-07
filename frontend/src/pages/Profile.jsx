@@ -3,6 +3,9 @@ import React, { useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { userStore, profileStore } from '../stores';
+import NotificationBell from '../components/NotificationBell';
+import WhoToFollow from '../components/WhoToFollow';
+import PremiumSubscription from '../components/PremiumSubscription';
 import './Home.css';
 import { 
     Trash, 
@@ -20,8 +23,6 @@ import {
     Plus
 } from "@phosphor-icons/react";
 import FollowModal from '../components/FollowModal';
-import NotificationBell from '../components/NotificationBell';
-import './TwitterHome.css';
 import './Profile.css';
 
 const Profile = observer(() => {
@@ -31,6 +32,7 @@ const Profile = observer(() => {
     const fetchProfile = useCallback(async () => {
         try {
             profileStore.clearProfileData(); 
+            profileStore.cancelEditing();
             profileStore.setLoading(true);
             const token = localStorage.getItem('token');
             const response = await fetch(`http://localhost:6969/api/users/${username}`, {
@@ -284,9 +286,22 @@ const Profile = observer(() => {
                                     {user.isFollowing ? 'Following' : 'Follow'}
                                 </button>
                             ) : (
-                                <button className="profile-edit-btn">
-                                    Edit profile
-                                </button>
+                                <div className="profile-edit-actions">
+                                    {!profileStore.isEditing ? (
+                                        <button className="profile-edit-btn" onClick={() => profileStore.startEditing()}>
+                                            Edit profile
+                                        </button>
+                                    ) : (
+                                        <div className="edit-actions">
+                                            <button className="cancel-edit-btn" onClick={() => profileStore.cancelEditing()}>
+                                                Cancel
+                                            </button>
+                                            <button className="save-edit-btn" onClick={() => profileStore.saveProfile()}>
+                                                Save
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -300,10 +315,26 @@ const Profile = observer(() => {
                         </p>
                     </div>
                     
-                    {user.bio && (
+                    {user.bio && !profileStore.isEditing && (
                         <p className="profile-bio">
                             {user.bio}
                         </p>
+                    )}
+                    
+                    {profileStore.isEditing && (
+                        <div className="profile-bio-edit">
+                            <textarea
+                                className="bio-textarea"
+                                value={profileStore.editBio}
+                                onChange={(e) => profileStore.setEditBio(e.target.value)}
+                                placeholder="Tell us about yourself..."
+                                maxLength={500}
+                                rows={3}
+                            />
+                            <div className="bio-char-count">
+                                {profileStore.editBio.length}/500
+                            </div>
+                        </div>
                     )}
                     
                     <div className="profile-joined-date">
@@ -453,6 +484,33 @@ const Profile = observer(() => {
                         ))
                     )}
                 </div>
+            </div>
+
+            <div className="right-sidebar">
+                <PremiumSubscription />
+                
+                <div className="trending-widget">
+                    <div className="widget-header">
+                        <h2 className="widget-title">What's happening</h2>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Trending in Technology</div>
+                        <div className="trending-topic">#WebDevelopment</div>
+                        <div className="trending-tweets">42.1K posts</div>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Trending</div>
+                        <div className="trending-topic">#ReactJS</div>
+                        <div className="trending-tweets">125K posts</div>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Technology · Trending</div>
+                        <div className="trending-topic">#JavaScript</div>
+                        <div className="trending-tweets">89.2K posts</div>
+                    </div>
+                </div>
+                
+                <WhoToFollow />
             </div>
             
             <FollowModal profileStore={profileStore} />

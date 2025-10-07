@@ -189,7 +189,6 @@ class HomeStore {
                 this.addComment(postId, response.data);
                 this.setNewComment(postId, '');
                 
-                // Update comment count
                 const post = this.posts.find(p => p.id === postId);
                 if (post) {
                     this.updatePost(postId, {

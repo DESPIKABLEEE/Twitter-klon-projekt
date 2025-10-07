@@ -34,7 +34,7 @@ class NotificationService {
         }
     }
 
-    async deleteNotification(notificationId) { // ne radi, moram popravit
+    async deleteNotification(notificationId) {
         try {
             const response = await fetch(`${this.baseUrl}/notifications/${notificationId}`, {
                 method: 'DELETE',

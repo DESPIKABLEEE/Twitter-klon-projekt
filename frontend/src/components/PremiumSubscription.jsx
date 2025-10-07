@@ -9,9 +9,9 @@ import {
 import './PremiumSubscription.css';
 
 const PremiumSubscription = () => {
-  const handleSubscribe = () => {
-    alert('Premium subscription feature coming soon!');
-  };
+  // const handleSubscribe = () => {
+  //   alert('Premium subscription feature coming soon!');
+  // };
 
   return (
     <div className="premium-widget">
@@ -44,7 +44,7 @@ const PremiumSubscription = () => {
           </li>
         </ul>
         
-        <button className="subscribe-btn" onClick={handleSubscribe}>
+        <button className="subscribe-btn">
           Subscribe
         </button>
       </div>

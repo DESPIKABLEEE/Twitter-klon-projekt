@@ -157,7 +157,7 @@ class NotificationStore {
                 this.notifications.splice(index, 1);
             }
 
-            await NotificationService.deleteNotification(notificationId); // ne radi brisanje u bazi
+            await NotificationService.deleteNotification(notificationId); 
         } catch (error) {
             console.error('Error deleting notification:', error);
         }

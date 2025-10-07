@@ -17,6 +17,9 @@ class ProfileStore {
   modalLoading = false
   showUserDropdown = false
   
+  isEditing = false
+  editBio = ''
+  
   constructor() {
     makeAutoObservable(this)
   }
@@ -119,6 +122,34 @@ class ProfileStore {
     this.showUserDropdown = false
   }
   
+  startEditing() {
+    this.editBio = this.profileData?.user?.bio || ''
+    this.isEditing = true
+  }
+  
+  cancelEditing() {
+    this.isEditing = false
+    this.editBio = ''
+  }
+  
+  setEditBio(bio) {
+    this.editBio = bio
+  }
+  
+  async saveProfile() {
+    try {
+      const result = await this.updateProfile({ bio: this.editBio });
+      if (result.success) {
+        this.isEditing = false;
+        this.editBio = '';
+      }
+      return result;
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
   async fetchFollowers(username) {
     try {
       this.setModalLoading(true);
@@ -198,6 +229,33 @@ class ProfileStore {
     }
   }
 
+  async updateProfile(profileData) {
+    try {
+      this.setLoading(true);
+      const response = await UserService.updateProfile(profileData);
+      
+      if (response.success) {
+        // Update the user data in profileData
+        this.profileData = {
+          ...this.profileData,
+          user: {
+            ...this.profileData.user,
+            ...response.data
+          }
+        };
+        return { success: true };
+      } else {
+        throw new Error(response.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      this.setError(error.message || 'Failed to update profile');
+      return { success: false, error: error.message };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   reset() {
     this.profileData = null
     this.loading = true
@@ -210,6 +268,8 @@ class ProfileStore {
     this.modalType = ''
     this.modalData = []
     this.showUserDropdown = false
+    this.isEditing = false
+    this.editBio = ''
   }
 }
 

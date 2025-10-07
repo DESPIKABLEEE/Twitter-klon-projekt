@@ -74,7 +74,8 @@ const Home = observer(() => {
         }
         
         await homeStore.fetchPosts();
-    };    const handleCreatePost = async (e) => {
+    };    
+    const handleCreatePost = async (e) => {
         e.preventDefault();
         if (!homeStore.newPost.trim()) return;
 
@@ -158,7 +159,6 @@ const Home = observer(() => {
 
     return (
         <div className="twitter-layout">
-            {/* Left Sidebar */}
             <div className="sidebar">
                 <div className="sidebar-content">
                     <div className="logo">
@@ -197,6 +197,7 @@ const Home = observer(() => {
                     }}>
                         <div className="user-info">
                             <User className="user-profile-icon" size={24} />
+                            <span className="user-name">{userStore.user?.display_name || userStore.user?.username}</span>
                         </div>
                         {showUserDropdown && (
                             <div className="user-dropdown">
@@ -294,7 +295,9 @@ const Home = observer(() => {
                         homeStore.posts.map(post => (
                             <article key={post.id} className="post-item">
                                 <div className="post-container">
-                                    <div className="post-avatar"></div>
+                                    <div className="post-avatar">
+                                        {post.display_name ? post.display_name[0].toUpperCase() : post.username[0].toUpperCase()}
+                                    </div>
                                     <div className="post-content">
                                         <div className="post-header">
                                             <span className="post-author">{post.display_name || post.username}</span>

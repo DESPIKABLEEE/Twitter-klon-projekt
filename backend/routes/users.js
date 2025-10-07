@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
 const { optionalAuth, authenticateToken } = require('../middlewares/auth');
+const { sendNotificationToUser } = require('../src/websocket/socketServer');
 
 router.get('/suggested', authenticateToken, async (req, res) => {
   try {
@@ -247,6 +248,35 @@ router.post('/:userId/follow', authenticateToken, async (req, res) => {
         [currentUserId]
       );
       
+      try {
+        const insertResult = await query(`
+          INSERT INTO notifications (user_id, type, related_user_id, content) 
+          VALUES (?, 'follow', ?, ?)
+        `, [
+          targetUserId, 
+          currentUserId, 
+          `${req.user.username} started following you`
+        ]);
+
+        const notificationId = insertResult.insertId;
+
+        const notification = {
+          id: notificationId,
+          type: 'follow',
+          message: `<strong>@${req.user.username}</strong> started following you`,
+          from_user: {
+            id: currentUserId,
+            username: req.user.username
+          },
+          created_at: new Date().toISOString()
+        };
+
+        sendNotificationToUser(targetUserId, notification);
+        console.log(`Follow notification sent to user ${targetUserId}`);
+      } catch (notifError) {
+        console.error('Error sending follow notification:', notifError);
+      }
+      
       isFollowing = true;
     }
 
@@ -266,6 +296,75 @@ router.post('/:userId/follow', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.log('FOLLOW_UNFOLLOW', error); // debug
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+router.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { bio, display_name } = req.body;
+
+    if (bio !== undefined && bio.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bio must be less than 500 characters'
+      });
+    }
+
+    if (display_name !== undefined && display_name.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'Display name must be less than 50 characters'
+      });
+    }
+
+    let updateFields = [];
+    let values = [];
+
+    if (bio !== undefined) {
+      updateFields.push('bio = ?');
+      values.push(bio);
+    }
+
+    if (display_name !== undefined) {
+      updateFields.push('display_name = ?');
+      values.push(display_name);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    values.push(userId);
+
+    const updateQuery = `
+      UPDATE users 
+      SET ${updateFields.join(', ')}, updated_at = NOW() 
+      WHERE id = ?
+    `;
+
+    await query(updateQuery, values);
+
+    const updatedUser = await query(
+      'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      data: updatedUser[0],
+      message: 'Profile updated successfully'
+    });
+
+  } catch (error) {
+    console.log('UPDATE_PROFILE_ERROR', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
