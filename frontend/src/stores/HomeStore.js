@@ -14,6 +14,16 @@ class HomeStore {
     commentLoading = {};
     showFollowingOnly = false;
 
+    // Image upload state
+    imageFile = null;
+    imagePreview = null;
+    uploading = false;
+
+    showSearchModal = false;
+    searchQuery = '';
+    searchResults = [];
+    searchLoading = false;
+
     constructor() {
         makeAutoObservable(this);
     }
@@ -82,6 +92,75 @@ class HomeStore {
 
     resetNewPost = () => {
         this.newPost = '';
+        this.clearImage();
+    };
+
+    setImageFile = (file) => {
+        this.imageFile = file;
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.imagePreview = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            this.imagePreview = null;
+        }
+    };
+
+    clearImage = () => {
+        this.imageFile = null;
+        this.imagePreview = null;
+    };
+
+    setUploading = (value) => {
+        this.uploading = value;
+    };
+
+    setShowSearchModal = (value) => {
+        this.showSearchModal = value;
+        if (!value) {
+            this.searchQuery = '';
+            this.searchResults = [];
+        }
+    };
+
+    setSearchQuery = (query) => {
+        this.searchQuery = query;
+    };
+
+    setSearchResults = (results) => {
+        this.searchResults = results;
+    };
+
+    setSearchLoading = (value) => {
+        this.searchLoading = value;
+    };
+
+    searchUsers = async (query) => {
+        if (!query || query.trim().length < 2) {
+            this.setSearchResults([]);
+            return;
+        }
+
+        try {
+            this.setSearchLoading(true);
+            const response = await fetch(`http://localhost:6969/api/users/search?q=${encodeURIComponent(query)}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) throw new Error('Search failed');
+
+            const data = await response.json();
+            this.setSearchResults(data.data.users || []);
+        } catch (error) {
+            console.error('Search error:', error);
+            this.setSearchResults([]);
+        } finally {
+            this.setSearchLoading(false);
+        }
     };
 
     fetchPosts = async () => {
@@ -127,7 +206,14 @@ class HomeStore {
         try {
             this.setLoading(true);
             this.setError('');
-            const newPost = await PostService.createPost(content, image); // moram dodat i za slike
+            
+            const imageToUpload = image || this.imageFile;
+            
+            if (imageToUpload) {
+                this.setUploading(true);
+            }
+            
+            const newPost = await PostService.createPost(content, imageToUpload);
             this.addPost(newPost);
             this.resetNewPost();
             await this.fetchPosts();
@@ -137,6 +223,7 @@ class HomeStore {
             throw error;
         } finally {
             this.setLoading(false);
+            this.setUploading(false);
         }
     };
 

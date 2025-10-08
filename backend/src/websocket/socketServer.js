@@ -25,7 +25,7 @@ const initializeSocket = (server) => {
     });
     
     if (!token) {
-      console.log('❌ No token provided for WebSocket');
+      console.log('No token provided for WebSocket');
       return next(new Error('No authentication token'));
     }
 
@@ -33,10 +33,10 @@ const initializeSocket = (server) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
       socket.userId = decoded.userId;
       socket.username = decoded.username;
-      console.log('✅ WebSocket auth success:', socket.username);
+      console.log('WebSocket auth success:', socket.username);
       next();
     } catch (err) {
-      console.log('❌ WebSocket auth failed:', err.message);
+      console.log('WebSocket auth failed:', err.message);
       next(new Error('Invalid authentication token'));
     }
   });

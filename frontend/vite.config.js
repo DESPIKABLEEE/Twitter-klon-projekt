@@ -10,5 +10,13 @@ export default defineConfig({
     watch: {
       usePolling: true // Enable polling for file changes in Docker
     }
-  }
+  },
+  // bitno za slike
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 })

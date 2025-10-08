@@ -30,8 +30,8 @@ router.get('/test', async (req, res) => {
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    console.log('post za user ', req.user); // debug
-    console.log('start'); // debug
+    console.log('post za user ', req.user);
+    console.log('start');
     
     const posts = await query(`
       SELECT 
@@ -52,7 +52,7 @@ router.get('/', optionalAuth, async (req, res) => {
       LIMIT 10
     `, req.user ? [req.user.id] : []);
 
-    console.log('finish'); // debug
+    console.log('finish');
 
     res.json({
       success: true,
@@ -71,7 +71,7 @@ router.get('/', optionalAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.log('GET_POSTS', error); // debug
+    console.log('GET_POSTS', error);
     res.status(500).json({
       success: false,
       message: 'ne radi fetch',
@@ -83,7 +83,7 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/following', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log('za usera ', userId); // debug
+    console.log('za usera ', userId);
     
     const posts = await query(`
       SELECT 
@@ -128,7 +128,7 @@ router.get('/following', authenticateToken, async (req, res) => {
       }
     };
     
-    console.log('za postove',response.data.posts.length); // debug
+    console.log('za postove',response.data.posts.length);
 
     res.json(response);
 
@@ -180,7 +180,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.log('GET_POST', error); // debug
+    console.log('GET_POST', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch post'
@@ -189,14 +189,13 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 router.post('/', authenticateToken, [
-  body('content').isLength({ min: 1, max: 280 }).withMessage('Content must be between 1 and 280 characters'),
-  body('image_url').optional().isURL().withMessage('Invalid image URL')
+  body('content').optional({ nullable: true, checkFalsy: true }).isLength({ min: 0, max: 280 }).withMessage('Content must be between 0 and 280 characters'),
+  body('image_url').optional({ nullable: true, checkFalsy: true }).isURL().withMessage('Invalid image URL')
 ], async (req, res) => {
   try {
-    console.log('creation'); // debug
+    console.log('creation');
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation failed'); // debug
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -287,7 +286,7 @@ router.post('/', authenticateToken, [
     });
 
   } catch (error) {
-    console.log('CREATE_POST fail', error); // debug
+    console.log('CREATE_POST fail', error);
     res.status(500).json({
       success: false,
       message: 'Fail za post'
@@ -362,7 +361,7 @@ router.put('/:id', authenticateToken, [
     });
 
   } catch (error) {
-    console.log('UPDATE_POST', error); // debug
+    console.log('UPDATE_POST', error);
     res.status(500).json({
       success: false,
       message: 'Ne radi update'
@@ -407,7 +406,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.log('DELETE_POST', error); // debug
+    console.log('DELETE_POST', error);
     res.status(500).json({
       success: false,
       message: 'Post se nije izbrisa'
@@ -477,7 +476,7 @@ router.post('/:id/comments', authenticateToken, [
     const { content } = req.body;
     const userId = req.user.id;
 
-    const posts = await query('SELECT id FROM posts WHERE id = ?', [postId]);
+    const posts = await query('SELECT id, user_id FROM posts WHERE id = ?', [postId]);
     if (posts.length === 0) {
       return res.status(404).json({
         success: false,
@@ -494,6 +493,42 @@ router.post('/:id/comments', authenticateToken, [
       'UPDATE posts SET comments_count = comments_count + 1 WHERE id = ?',
       [postId]
     );
+
+    // Send notification to post owner if not self-comment
+    if (posts[0].user_id !== userId) {
+      try {
+        const insertResult = await query(`
+          INSERT INTO notifications (user_id, type, related_user_id, related_post_id, content) 
+          VALUES (?, 'comment', ?, ?, ?)
+        `, [
+          posts[0].user_id, 
+          userId, 
+          postId, 
+          `${req.user.username} commented on your post`
+        ]);
+
+        const notificationId = insertResult.insertId;
+
+        const notification = {
+          id: notificationId,
+          type: 'comment',
+          message: `<strong>@${req.user.username}</strong> commented on your post`,
+          from_user: {
+            id: userId,
+            username: req.user.username
+          },
+          post: {
+            id: postId
+          },
+          created_at: new Date().toISOString()
+        };
+
+        sendNotificationToUser(posts[0].user_id, notification);
+        console.log(`Comment notification sent to user ${posts[0].user_id}`);
+      } catch (notifError) {
+        console.error('Error sending comment notification:', notifError);
+      }
+    }
 
     const newComment = await query(`
       SELECT 
@@ -527,12 +562,12 @@ router.post('/:id/comments', authenticateToken, [
 
 router.post('/:id/like', authenticateToken, async (req, res) => {
   try {
-    console.log('like funkcija'); // debug
+    console.log('like funkcija');
     const postId = parseInt(req.params.id);
     const userId = req.user.id;
     
     if (!postId || !userId) {
-      console.log('LIKE_POST'); // debug
+      console.log('LIKE_POST');
       return res.status(400).json({
         success: false,
         message: 'Nema data'
@@ -547,7 +582,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
     `, [postId]);
     
     if (posts.length === 0) {
-      console.log('Nema posta : ', postId); // debug log
+      console.log('Nema posta : ', postId);
       return res.status(404).json({
         success: false,
         message: 'Nema post'
@@ -566,7 +601,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
 
     let isLikedResult = false;
     if (existingLike.length > 0) {
-      console.log('Micem like'); // debug
+      console.log('Micem like');
 
       await query('DELETE FROM likes WHERE post_id = ? AND user_id = ?', 
         [postId, userId]);
@@ -576,7 +611,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
 
       isLikedResult = false;
     } else {
-      console.log('LIKE_POST: user hasnt liked, adding like...'); // debug
+      console.log('LIKE_POST: user hasnt liked, adding like...');
 
       await query('INSERT INTO likes (post_id, user_id) VALUES (?, ?)', [postId, userId]);
 
@@ -623,7 +658,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
     const updatedPost = await query('SELECT likes_count FROM posts WHERE id = ?', [postId]);
     
     if (updatedPost.length === 0) {
-      console.log('Error!'); // debug
+      console.log('Error!');
       return res.status(500).json({
         success: false,
         message: 'error'
@@ -633,7 +668,7 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
     let finalLikesCount = 0;
     finalLikesCount = updatedPost[0].likes_count;
     
-    console.log('LIKE_POST', isLikedResult); // debug
+    console.log('LIKE_POST', isLikedResult);
 
     res.json({
       success: true,

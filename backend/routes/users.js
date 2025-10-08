@@ -115,6 +115,63 @@ router.get('/:username/following', optionalAuth, async (req, res) => {
   }
 });
 
+router.get('/search', optionalAuth, async (req, res) => {
+  console.log('SEARCH endpoint called with query:', req.query);
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length < 1) {
+      return res.json({
+        success: true,
+        data: { users: [] }
+      });
+    }
+
+    const searchTerm = `%${q.trim()}%`;
+    
+    const users = await query(`
+      SELECT 
+        u.id, 
+        u.username, 
+        u.display_name, 
+        u.avatar_url,
+        u.followers_count,
+        u.following_count,
+        ${req.user ? `(SELECT COUNT(*) FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following` : '0 as is_following'}
+      FROM users u
+      WHERE (u.username LIKE ? OR u.display_name LIKE ?)
+      AND u.id != ?
+      ORDER BY 
+        CASE 
+          WHEN u.username LIKE ? THEN 1
+          WHEN u.display_name LIKE ? THEN 2
+          ELSE 3
+        END,
+        u.followers_count DESC
+      LIMIT 20
+    `, [
+      req.user ? req.user.id : null,
+      searchTerm, 
+      searchTerm,
+      req.user ? req.user.id : 0,
+      `${q.trim()}%`,
+      `${q.trim()}%`
+    ]);
+
+    res.json({
+      success: true,
+      data: { users }
+    });
+
+  } catch (error) {
+    console.log('SEARCH_USERS', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 router.get('/:username', optionalAuth, async (req, res) => {
   try {
     const { username } = req.params;
@@ -364,13 +421,15 @@ router.put('/profile', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.log('UPDATE_PROFILE_ERROR', error);
+    console.log('Uprate profile error', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
     });
   }
 });
+
+
 
 // dummy
 router.get('/', (req, res) => {

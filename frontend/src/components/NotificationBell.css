@@ -44,9 +44,9 @@
   max-height: 400px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 200;
 }
 
-/* Adjust positioning if dropdown goes off-screen */
 @media (max-width: 768px) {
   .notification-dropdown {
     right: -50px;
@@ -59,7 +59,7 @@
     right: -100px;
     width: 250px;
     left: auto;
-    transform: translateX(-50%);
+    /* transform: translateX(-50%); */
   }
 }
 

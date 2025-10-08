@@ -33,7 +33,9 @@ const NotificationBell = observer(() => {
         if (bellIcon) {
           const bellRect = bellIcon.getBoundingClientRect();
           const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
           
+          dropdown.style.bottom = 'auto';
           dropdown.style.top = `${bellRect.bottom + 5}px`;
           dropdown.style.right = `${viewportWidth - bellRect.right}px`;
           dropdown.style.left = 'auto';
@@ -47,6 +49,11 @@ const NotificationBell = observer(() => {
           if (dropdownRect.left < 20) {
             dropdown.style.left = '20px';
             dropdown.style.right = 'auto';
+          }
+
+          if (dropdownRect.bottom > viewportHeight - 12) {
+            const newTop = Math.max(12, bellRect.top - dropdownRect.height - 5);
+            dropdown.style.top = `${newTop}px`;
           }
         }
       }

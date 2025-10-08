@@ -23,7 +23,7 @@ const FollowModal = observer(({ profileStore }) => {
             className="modal-close-btn"
             onClick={() => profileStore.closeModal()}
           >
-            ×
+            x
           </button>
         </div>
         

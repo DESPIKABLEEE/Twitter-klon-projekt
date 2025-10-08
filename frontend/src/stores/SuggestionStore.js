@@ -5,6 +5,7 @@ class SuggestionStore {
     suggestedUsers = [];
     loading = false;
     error = '';
+    hasFetched = false;
 
     constructor() {
         makeAutoObservable(this);
@@ -35,15 +36,19 @@ class SuggestionStore {
     clearSuggestions = () => {
         this.suggestedUsers = [];
         this.error = '';
+        this.hasFetched = false;
     };
 
     fetchSuggestedUsers = async () => {
+        if (this.hasFetched) return;
+        
         try {
             this.setLoading(true);
             this.setError('');
             
             const response = await UserService.getSuggestedUsers();
             this.setSuggestedUsers(response);
+            this.hasFetched = true;
         } catch (error) {
             console.error('Error fetching suggested users:', error);
             this.setError('Failed to load suggestions');

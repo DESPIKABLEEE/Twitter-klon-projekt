@@ -49,7 +49,7 @@ const Login = observer(() => {
         <div>
             <div className='main_container'>
                 <div className='livi_div'>
-                    <img src="/images/pas.jpeg" alt="logo" width={"200px"} height={"200px"}/>
+                    <img src="/images/twitter.png" alt="logo" width={"200px"} height={"200px"}/>
                 </div>
                 <div className='desni_div'>
 

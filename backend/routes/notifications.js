@@ -4,8 +4,6 @@ const { authenticateToken } = require('../middlewares/auth');
 
 const router = express.Router();
 
-// moram napravit
-
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -111,7 +109,9 @@ router.put('/read-all', authenticateToken, async (req, res) => {
       [userId]
     );
 
-    res.json({ success: true, message: 'All notifications marked as read' });
+    res.json({ 
+      success: true, 
+      message: 'All notifications marked as read' });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
     res.status(500).json({

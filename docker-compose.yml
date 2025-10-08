@@ -79,6 +79,8 @@ services:
     environment:
       NODE_ENV: development
       VITE_API_URL: http://localhost:6969
+      VITE_SUPABASE_URL: https://vmwsahocyqftzhkmiaua.supabase.co
+      VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtd3NhaG9jeXFmdHpoa21pYXVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MDYzOTQsImV4cCI6MjA3NTI4MjM5NH0.B7dZ1wf8Tf4FvDTN5L0qGiiF_fSEH4zT480tc4rZoQ4
     ports:
       - "5173:5173"
     volumes:

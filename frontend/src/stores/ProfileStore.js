@@ -45,6 +45,59 @@ class ProfileStore {
     this.error = error
   }
   
+  async fetchProfile(username) {
+    try {
+      this.clearProfileData(); 
+      this.cancelEditing();
+      this.setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:6969/api/users/${username}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        this.setProfileData(data.data);
+      } else {
+        this.setError(data.message || 'User not found');
+      }
+    } catch (error) {
+      console.error('Error: ', error);
+      this.setError('Ne mogu load profil');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+  
+  async toggleFollow(userId) {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`http://localhost:6969/api/users/${userId}/follow`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        this.setProfileData({
+          ...this.profileData,
+          user: {
+            ...this.profileData.user,
+            isFollowing: data.data.isFollowing,
+            followers_count: data.data.followers_count
+          }
+        });
+      }
+    } catch (error) {
+      console.error('follow problem', error);
+    }
+  }
+  
   toggleComments(postId) {
     this.showComments = {
       ...this.showComments,

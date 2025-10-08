@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { userStore, homeStore } from '../stores';
 import NotificationBell from '../components/NotificationBell';
 import WhoToFollow from '../components/WhoToFollow';
 import PremiumSubscription from '../components/PremiumSubscription';
+import SearchModal from '../components/SearchModal';
 import './Home.css';
 import { 
     Trash, 
@@ -29,6 +30,7 @@ import {
 const Home = observer(() => {
     const navigate = useNavigate();
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -77,12 +79,31 @@ const Home = observer(() => {
     };    
     const handleCreatePost = async (e) => {
         e.preventDefault();
-        if (!homeStore.newPost.trim()) return;
+        if (!homeStore.newPost.trim() && !homeStore.imageFile) return;
 
         try {
             await homeStore.createPost(homeStore.newPost);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         } catch (error) {
             console.error('Error kod kreacije', error);
+        }
+    };
+
+    const handleImageClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Check file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB');
+                return;
+            }
+            homeStore.setImageFile(file);
         }
     };
 
@@ -158,11 +179,11 @@ const Home = observer(() => {
     const isOverLimit = characterCount > maxCharacters;
 
     return (
-        <div className="twitter-layout">
+        <div className="twitter-layout home-page">
             <div className="sidebar">
                 <div className="sidebar-content">
                     <div className="logo">
-                        <img src="/images/pas.jpeg" alt="X" style={{width: '100%', borderRadius: '50%'}} />
+                        <img src="/images/twitter.png" alt="X" style={{width: '100%', borderRadius: '50%'}} />
                     </div>
                     
                     <nav>
@@ -170,9 +191,9 @@ const Home = observer(() => {
                             <House className="nav-icon" weight="fill" />
                             <span>Home</span>
                         </div>
-                        <div className="nav-item">
+                        <div className="nav-item" onClick={() => homeStore.setShowSearchModal(true)}>
                             <MagnifyingGlass className="nav-icon" />
-                            <span>Explore</span>
+                            <span>Search</span>
                         </div>
                         <div className="nav-item notification-nav">
                             <NotificationBell />
@@ -185,9 +206,12 @@ const Home = observer(() => {
                             <BookmarkSimple className="nav-icon" />
                             <span>Bookmarks</span>
                         </div>
-                        <div className="nav-item">
-                            <DotsThree className="nav-icon" />
-                            <span>More</span>
+                        <div 
+                            className="nav-item"
+                            onClick={() => navigate(`/${userStore.user?.username}`)}
+                        >
+                            <User className="nav-icon" />
+                            <span>Profile</span>
                         </div>
                     </nav>
                     
@@ -249,9 +273,28 @@ const Home = observer(() => {
                                 onChange={(e) => homeStore.setNewPost(e.target.value)}
                                 maxLength={320}
                             />
+                            {homeStore.imagePreview && (
+                                <div className="image-preview">
+                                    <img src={homeStore.imagePreview} alt="Preview" className="preview-image" />
+                                    <button 
+                                        type="button" 
+                                        className="remove-image"
+                                        onClick={() => homeStore.clearImage()}
+                                    >
+                                        <Trash size={16} />
+                                    </button>
+                                </div>
+                            )}
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImageSelect}
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                            />
                             <div className="compose-actions">
                                 <div className="compose-options">
-                                    <button type="button" className="compose-option">
+                                    <button type="button" className="compose-option" onClick={handleImageClick}>
                                         <ImageSquare size={20} />
                                     </button>
                                     <button type="button" className="compose-option">
@@ -273,7 +316,7 @@ const Home = observer(() => {
                                 <button 
                                     type="submit" 
                                     className="post-button"
-                                    disabled={homeStore.loading || !homeStore.newPost.trim() || isOverLimit}
+                                    disabled={homeStore.loading || (!homeStore.newPost.trim() && !homeStore.imageFile) || isOverLimit}
                                 >
                                     {homeStore.loading ? 'Posting...' : 'Post'}
                                 </button>
@@ -300,7 +343,9 @@ const Home = observer(() => {
                                     </div>
                                     <div className="post-content">
                                         <div className="post-header">
-                                            <span className="post-author">{post.display_name || post.username}</span>
+                                            <Link to={`/${post.username}`} className="post-author-link">
+                                                <span className="post-author">{post.display_name || post.username}</span>
+                                            </Link>
                                             <span className="post-handle">@{post.username}</span>
                                             <span className="post-time">·</span>
                                             <span className="post-time">{new Date(post.created_at).toLocaleDateString()}</span>
@@ -319,12 +364,13 @@ const Home = observer(() => {
                                             {post.content}
                                         </div>
                                         {post.image_url && (
-                                            <img 
-                                                src={post.image_url} 
-                                                alt="Post" 
-                                                className="post-image"
-                                                style={{width: '100%', borderRadius: '1rem', marginTop: '0.75rem'}}
-                                            />
+                                            <div className="post-image-container">
+                                                <img 
+                                                    src={post.image_url} 
+                                                    alt="Post" 
+                                                    className="post-image"
+                                                />
+                                            </div>
                                         )}
                                         <div className="post-actions">
                                             <button 
@@ -364,29 +410,19 @@ const Home = observer(() => {
                                                     ))}
                                                 </div>
                                                 
-                                                <form onSubmit={(e) => handleCommentSubmit(post.id, e)} style={{marginTop: '0.75rem', display: 'flex', gap: '0.5rem'}}>
+                                                <form onSubmit={(e) => handleCommentSubmit(post.id, e)} className="comment-form">
                                                     <textarea
                                                         placeholder="Write a comment..."
                                                         value={homeStore.newComment[post.id] || ''}
                                                         onChange={(e) => homeStore.setNewComment(post.id, e.target.value)}
                                                         maxLength={280}
                                                         rows={2}
-                                                        style={{
-                                                            flex: 1,
-                                                            background: 'transparent',
-                                                            border: '1px solid rgb(47, 51, 54)',
-                                                            borderRadius: '0.5rem',
-                                                            color: '#e7e9ea',
-                                                            padding: '0.5rem',
-                                                            resize: 'none',
-                                                            fontFamily: 'inherit'
-                                                        }}
+                                                        className="comment-textarea"
                                                     />
                                                     <button 
                                                         type="submit" 
-                                                        className="post-button"
+                                                        className="post-button comment-submit-btn"
                                                         disabled={homeStore.commentLoading[post.id] || !(homeStore.newComment[post.id]?.trim())}
-                                                        style={{alignSelf: 'flex-end'}}
                                                     >
                                                         {homeStore.commentLoading[post.id] ? 'Posting...' : 'Comment'}
                                                     </button>
@@ -427,6 +463,11 @@ const Home = observer(() => {
                 
                 <WhoToFollow />
             </div>
+            
+            <SearchModal 
+                isOpen={homeStore.showSearchModal} 
+                onClose={() => homeStore.setShowSearchModal(false)} 
+            />
         </div>
     );
 });

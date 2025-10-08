@@ -1,11 +1,11 @@
-// popravit da se prikazuje desni sidebar sa home pagea na profile pageu
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { observer } from 'mobx-react';
-import { userStore, profileStore } from '../stores';
+import { userStore, profileStore, homeStore } from '../stores';
 import NotificationBell from '../components/NotificationBell';
 import WhoToFollow from '../components/WhoToFollow';
 import PremiumSubscription from '../components/PremiumSubscription';
+import SearchModal from '../components/SearchModal';
 import './Home.css';
 import { 
     Trash, 
@@ -15,12 +15,9 @@ import {
     ArrowLeft, 
     House,
     MagnifyingGlass,
-    Bell,
     Envelope,
     BookmarkSimple,
-    User,
-    DotsThree,
-    Plus
+    User
 } from "@phosphor-icons/react";
 import FollowModal from '../components/FollowModal';
 import './Profile.css';
@@ -28,32 +25,6 @@ import './Profile.css';
 const Profile = observer(() => {
     const { username } = useParams();
     const navigate = useNavigate();
-
-    const fetchProfile = useCallback(async () => {
-        try {
-            profileStore.clearProfileData(); 
-            profileStore.cancelEditing();
-            profileStore.setLoading(true);
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:6969/api/users/${username}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.setProfileData(data.data);
-            } else {
-                profileStore.setError(data.message || 'User not found');
-            }
-        } catch (error) {
-            console.error('Error: ', error);
-            profileStore.setError('Ne mogu load profil');
-        } finally {
-            profileStore.setLoading(false);
-        }
-    }, [username]);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -65,12 +36,12 @@ const Profile = observer(() => {
         }
 
         try {
-            fetchProfile();
+            profileStore.fetchProfile(username);
         } catch (error) {
             console.error('Data ', error);
             navigate('/login');
         }
-    }, [username, navigate, fetchProfile]);
+    }, [username, navigate]);
 
     useEffect(() => {
         const handleClickOutside = () => {
@@ -92,30 +63,7 @@ const Profile = observer(() => {
     const handleFollowToggle = async () => {
         if (!profileStore.profileData || profileStore.profileData.user.isOwnProfile) return;
 
-        try {
-            const token = localStorage.getItem('token');
-            
-            const response = await fetch(`http://localhost:6969/api/users/${profileStore.profileData.user.id}/follow`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                profileStore.setProfileData({
-                    ...profileStore.profileData,
-                    user: {
-                        ...profileStore.profileData.user,
-                        isFollowing: data.data.isFollowing,
-                        followers_count: data.data.followers_count
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('follow problem', error);
-        }
+        await profileStore.toggleFollow(profileStore.profileData.user.id);
     };
 
     const handleShowFollowers = async () => {
@@ -177,7 +125,7 @@ const Profile = observer(() => {
         return <div className="loading">Loading profile...</div>;
     }
 
-    if (profileStore.error) {
+    if (profileStore.error) { //error stranica
         return (
             <div className="profile-container">
                 <div className="profile-content">
@@ -195,12 +143,11 @@ const Profile = observer(() => {
     const { user, posts } = profileStore.profileData;
 
     return (
-        <div className="twitter-layout">
-            {/* Left Sidebar */}
+        <div className="twitter-layout profile-page">
             <div className="sidebar">
                 <div className="sidebar-content">
                     <div className="logo">
-                        <img src="/images/pas.jpeg" alt="X" style={{width: '100%', borderRadius: '50%'}} />
+                        <img src="/images/twitter.png" alt="X" style={{width: '100%', borderRadius: '50%'}} />
                     </div>
                     
                     <nav>
@@ -208,9 +155,12 @@ const Profile = observer(() => {
                             <House className="nav-icon" weight="fill" />
                             <span>Home</span>
                         </div>
-                        <div className="nav-item">
+                        <div 
+                            className="nav-item"
+                            onClick={() => homeStore.setShowSearchModal(true)}
+                        >
                             <MagnifyingGlass className="nav-icon" />
-                            <span>Explore</span>
+                            <span>Search</span>
                         </div>
                         <div className="nav-item notification-nav">
                             <NotificationBell />
@@ -223,9 +173,12 @@ const Profile = observer(() => {
                             <BookmarkSimple className="nav-icon" />
                             <span>Bookmarks</span>
                         </div>
-                        <div className="nav-item">
-                            <DotsThree className="nav-icon" />
-                            <span>More</span>
+                        <div 
+                            className="nav-item"
+                            onClick={() => navigate(`/${userStore.user?.username}`)}
+                        >
+                            <User className="nav-icon" />
+                            <span>Profile</span>
                         </div>
                     </nav>
                     
@@ -235,6 +188,7 @@ const Profile = observer(() => {
                     }}>
                         <div className="user-info">
                             <User className="user-profile-icon" size={24} />
+                            <span className="user-name">{userStore.user?.display_name || userStore.user?.username}</span>
                         </div>
                         {profileStore.showUserDropdown && (
                             <div className="user-dropdown">
@@ -247,7 +201,6 @@ const Profile = observer(() => {
                 </div>
             </div>
 
-            {/* Main Content */}
             <div className="main-content">
                 <div className="main-header">
                     <div style={{display: 'flex', alignItems: 'center', gap: '2rem'}}>
@@ -391,7 +344,9 @@ const Profile = observer(() => {
                                     </div>
                                     <div className="post-content">
                                         <div className="post-header">
-                                            <span className="post-author">{post.display_name || post.username}</span>
+                                            <Link to={`/${post.username}`} className="post-author-link">
+                                                <span className="post-author">{post.display_name || post.username}</span>
+                                            </Link>
                                             <span className="post-handle">@{post.username}</span>
                                             <span className="post-time">·</span>
                                             <span className="post-time">{new Date(post.created_at).toLocaleDateString()}</span>
@@ -513,6 +468,11 @@ const Profile = observer(() => {
                 <WhoToFollow />
             </div>
             
+            <SearchModal 
+                isOpen={homeStore.showSearchModal}
+                onClose={() => homeStore.setShowSearchModal(false)}
+            />
+
             <FollowModal profileStore={profileStore} />
         </div>
     );

@@ -1,6 +1,12 @@
+import { createClient } from '@supabase/supabase-js';
+
 class PostService {
     constructor() {
         this.baseUrl = 'http://localhost:6969/api';
+        this.supabase = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY
+        );
     }
 
     async fetchPosts() {
@@ -33,10 +39,45 @@ class PostService {
         }
     }
 
-    async createPost(content) {
+    async uploadToSupabase(file) {
         try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `posts/${fileName}`;
+
+            const { error } = await this.supabase.storage
+                .from('images')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) {
+                throw error;
+            }
+
+            const { data: { publicUrl } } = this.supabase.storage
+                .from('images')
+                .getPublicUrl(filePath);
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Supabase upload error:', error);
+            throw error;
+        }
+    }
+
+    async createPost(content, imageFile = null) {
+        try {
+            let imageUrl = null;
+            
+            if (imageFile) {
+                imageUrl = await this.uploadToSupabase(imageFile);
+            }
+            
             const payload = {
-                content: content
+                content: content,
+                image_url: imageUrl
             };
             
             const response = await fetch(`${this.baseUrl}/posts`, {
