@@ -133,6 +133,10 @@ class NotificationStore {
         }
     };
 
+    closeDropdown = () => {
+        this.isDropdownOpen = false;
+    };
+
     markAsRead = (notificationId) => {
         const notification = this.notifications.find(n => n.id === notificationId);
         if (notification && !notification.is_read) {

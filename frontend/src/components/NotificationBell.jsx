@@ -23,6 +23,23 @@ const NotificationBell = observer(() => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && 
+          !event.target.closest('.bell-icon')) {
+        notificationStore.closeDropdown();
+      }
+    };
+
+    if (notificationStore.isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notificationStore.isDropdownOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const adjustDropdownPosition = () => {
     setTimeout(() => {
