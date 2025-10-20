@@ -139,7 +139,7 @@ async function startServer() {
     console.log('Starting server...');
     console.log('NODE_ENV:', process.env.NODE_ENV);
     
-    if (process.env.NODE_ENV === 'production' || process.env.DB_HOST) {
+    if (process.env.DB_HOST) {
       console.log('Running database initialization...');
       await initializeDatabase();
     }
