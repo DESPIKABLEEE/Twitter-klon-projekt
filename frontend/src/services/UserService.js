@@ -1,6 +1,8 @@
+import { getApiBaseUrl } from '../config/api';
+
 class UserService {
   constructor() {
-    this.API_URL = 'http://localhost:6969/api';
+    this.API_URL = getApiBaseUrl();
   }
 
   async getSuggestedUsers() {

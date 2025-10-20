@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // Allow external connections
     port: 5173,      // Set explicit port
+    allowedHosts: ['quick-stars-smoke.loca.lt', 'localhost', '127.0.0.1'],
     watch: {
       usePolling: true // Enable polling for file changes in Docker
     }

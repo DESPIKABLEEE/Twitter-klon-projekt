@@ -1,6 +1,8 @@
+import { getApiBaseUrl } from '../config/api';
+
 class AuthService {
     constructor() {
-        this.baseUrl = 'http://localhost:6969/api';
+        this.baseUrl = getApiBaseUrl();
     }
 
     async login(credentials) {
