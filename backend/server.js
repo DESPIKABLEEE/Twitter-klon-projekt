@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const db = require('./config/database');
+const { initializeDatabase } = require('./config/init');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
@@ -133,12 +134,25 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Start server
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔌 WebSocket server initialized`);
-});
+async function startServer() {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Running production database initialization...');
+      await initializeDatabase();
+    }
+    
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV}`);
+      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(`WebSocket server initialized`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = { app, server, io };

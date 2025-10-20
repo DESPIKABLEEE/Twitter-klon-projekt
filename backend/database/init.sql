@@ -1,3 +1,13 @@
+-- Create database if not exists
+CREATE DATABASE IF NOT EXISTS twitter_clone;
+
+-- Create user if not exists
+CREATE USER IF NOT EXISTS 'twitter_user'@'%' IDENTIFIED BY 'twitter_password';
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON twitter_clone.* TO 'twitter_user'@'%';
+FLUSH PRIVILEGES;
+
 USE twitter_clone;
 
 -- Users table
