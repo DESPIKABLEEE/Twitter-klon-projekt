@@ -1,27 +1,49 @@
-const { query } = require('./database');
+const mysql = require('mysql2');
 
 async function initializeDatabase() {
   try {
     console.log('Checking if database is initialized...');
     
-    try {
-      const result = await query(`SELECT USER FROM mysql.user WHERE USER = 'twitter_user'`);
-      if (result.length > 0) {
-        console.log('Database user already exists');
-        return true;
-      }
-    } catch (e) {
+    const rootPool = mysql.createPool({
+      host: process.env.DB_HOST || 'mysql',
+      port: process.env.DB_PORT || 3306,
+      user: 'root',
+      password: process.env.MYSQL_ROOT_PASSWORD || 'rootpassword',
+      waitForConnections: true,
+      connectionLimit: 5,
+      queueLimit: 0
+    });
 
+    const promisePool = rootPool.promise();
+    
+    try {
+      await promisePool.query(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME || 'twitter_clone'}`);
+      console.log('Database created');
+    } catch (e) {
+      console.log('Database already exists');
+    }
+    
+    try {
+      const user = process.env.DB_USER || 'twitter_user';
+      const password = process.env.DB_PASSWORD || 'twitter_password';
+      await promisePool.query(`CREATE USER IF NOT EXISTS '${user}'@'%' IDENTIFIED BY '${password}'`);
+      console.log('User created');
+    } catch (e) {
+      console.log('User already exists');
+    }
+    
+    try {
+      const user = process.env.DB_USER || 'twitter_user';
+      const dbName = process.env.DB_NAME || 'twitter_clone';
+      await promisePool.query(`GRANT ALL PRIVILEGES ON ${dbName}.* TO '${user}'@'%'`);
+      await promisePool.query(`FLUSH PRIVILEGES`);
+      console.log('Privileges granted');
+    } catch (e) {
+      console.log('Privileges grant failed:', e.message);
     }
 
-    console.log('Initializing database...');
-    
-    await query(`CREATE DATABASE IF NOT EXISTS twitter_clone`);
-    await query(`CREATE USER IF NOT EXISTS 'twitter_user'@'%' IDENTIFIED BY 'twitter_password'`);
-    await query(`GRANT ALL PRIVILEGES ON twitter_clone.* TO 'twitter_user'@'%'`);
-    await query(`FLUSH PRIVILEGES`);
-    
-    console.log('Database and user created');
+    rootPool.end();
+    console.log('Database initialization complete');
     return true;
   } catch (error) {
     console.error('Database initialization error:', error.message);
