@@ -1,5 +1,11 @@
 const mysql = require('mysql2');
 
+console.log('Database config:');
+console.log('DB_HOST:', process.env.DB_HOST || 'mysql');
+console.log('DB_PORT:', process.env.DB_PORT || 3306);
+console.log('DB_NAME:', process.env.DB_NAME || 'railway');
+console.log('DB_USER:', process.env.DB_USER || 'root');
+console.log('DB_PASSWORD length:', (process.env.DB_PASSWORD || 'twitter_password').length);
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'mysql',
@@ -20,6 +26,7 @@ const promisePool = pool.promise();
 
 const testConnection = async () => {
   try {
+    console.log('Testing database connection...');
     const connection = await promisePool.getConnection();
     console.log('Database connected successfully');
     connection.release();
