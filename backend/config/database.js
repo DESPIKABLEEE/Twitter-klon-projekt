@@ -4,9 +4,9 @@ const mysql = require('mysql2');
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'mysql',
   port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'twitter_user',
+  user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || 'twitter_password',
-  database: process.env.DB_NAME || 'twitter_clone',
+  database: process.env.DB_NAME || 'railway',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

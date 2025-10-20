@@ -4,12 +4,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-// const session = require('express-session');
-// const passport = require('passport');
 require('dotenv').config();
 
 const db = require('./config/database');
-const { initializeDatabase } = require('./config/init');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
@@ -138,11 +135,6 @@ async function startServer() {
   try {
     console.log('Starting server...');
     console.log('NODE_ENV:', process.env.NODE_ENV);
-    
-    if (process.env.DB_HOST) {
-      console.log('Running database initialization...');
-      await initializeDatabase();
-    }
     
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
