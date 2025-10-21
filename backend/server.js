@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const db = require('./config/database');
+const { initializeDatabase } = require('./config/initDb');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
@@ -137,6 +138,9 @@ async function startServer() {
   try {
     console.log('Starting server...');
     console.log('NODE_ENV:', process.env.NODE_ENV);
+    
+    // Initialize database tables
+    await initializeDatabase();
     
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
