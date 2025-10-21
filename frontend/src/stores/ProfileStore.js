@@ -1,6 +1,7 @@
 import { makeAutoObservable } from 'mobx'
 import UserService from '../services/UserService'
 import PostService from '../services/PostService'
+import { getApiBaseUrl } from '../config/api'
 
 class ProfileStore {
   profileData = null
@@ -51,7 +52,7 @@ class ProfileStore {
       this.cancelEditing();
       this.setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:6969/api/users/${username}`, {
+      const response = await fetch(`${getApiBaseUrl()}/users/${username}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -75,7 +76,7 @@ class ProfileStore {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:6969/api/users/${userId}/follow`, {
+      const response = await fetch(`${getApiBaseUrl()}/users/${userId}/follow`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

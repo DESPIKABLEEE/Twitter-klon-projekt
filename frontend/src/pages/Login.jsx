@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { observer } from 'mobx-react';
 import { loginStore, userStore } from '../stores';
+import { getApiBaseUrl } from '../config/api';
 import './Login.css'
 
 const Login = observer(() => {
@@ -18,7 +19,7 @@ const Login = observer(() => {
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = 'http://localhost:6969/api/auth/google';
+        window.location.href = `${getApiBaseUrl()}/auth/google`;
     };
 
     const handleSubmit = async (e) => {

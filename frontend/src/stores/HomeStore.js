@@ -1,5 +1,6 @@
 import { makeAutoObservable } from 'mobx';
 import PostService from '../services/PostService';
+import { getApiBaseUrl } from '../config/api';
 
 class HomeStore {
     posts = [];
@@ -145,7 +146,7 @@ class HomeStore {
 
         try {
             this.setSearchLoading(true);
-            const response = await fetch(`http://localhost:6969/api/users/search?q=${encodeURIComponent(query)}`, {
+            const response = await fetch(`${getApiBaseUrl()}/users/search?q=${encodeURIComponent(query)}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
