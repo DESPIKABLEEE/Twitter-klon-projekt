@@ -4,9 +4,18 @@ import { getApiBaseUrl } from '../config/api';
 class PostService {
     constructor() {
         this.baseUrl = getApiBaseUrl();
+        
+        // Debug: Log env vars
+        console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+        console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
+        
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+            console.warn('Supabase credentials are missing. Using fallback.');
+        }
+        
         this.supabase = createClient(
-            import.meta.env.VITE_SUPABASE_URL,
-            import.meta.env.VITE_SUPABASE_ANON_KEY
+            import.meta.env.VITE_SUPABASE_URL || 'https://vmwsahocyqftzhkmiaua.supabase.co',
+            import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtd3NhaG9jeXFmdHpoay1taWF1YSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzU5ODUxMjIyLCJleHAiOjE5NzU4NzUyMjJ9.l12JKTUfg3YFZXV9G5M_D8hX8kL4pQ9vR3J6nZ_b5sE'
         );
     }
 
