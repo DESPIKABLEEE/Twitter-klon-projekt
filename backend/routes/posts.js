@@ -190,12 +190,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
 router.post('/', authenticateToken, [
   body('content').optional({ nullable: true, checkFalsy: true }).isLength({ min: 0, max: 280 }).withMessage('Content must be between 0 and 280 characters'),
-  body('image_url').optional({ nullable: true, checkFalsy: true }).isURL().withMessage('Invalid image URL')
+  body('image_url').optional({ nullable: true, checkFalsy: true }).isString().matches(/^https?:\/\/.+/) .withMessage('Invalid image URL')
 ], async (req, res) => {
   try {
     console.log('creation');
+    console.log('Request body:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation failed',

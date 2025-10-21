@@ -1,22 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { getApiBaseUrl } from '../config/api';
 
 class PostService {
     constructor() {
         this.baseUrl = getApiBaseUrl();
-        
-        // Debug: Log env vars
-        console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
-        console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
-        
-        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-            console.warn('Supabase credentials are missing. Using fallback.');
-        }
-        
-        this.supabase = createClient(
-            import.meta.env.VITE_SUPABASE_URL || 'https://vmwsahocyqftzhkmiaua.supabase.co',
-            import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtd3NhaG9jeXFmdHpoay1taWF1YSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzU5ODUxMjIyLCJleHAiOjE5NzU4NzUyMjJ9.l12JKTUfg3YFZXV9G5M_D8hX8kL4pQ9vR3J6nZ_b5sE'
-        );
     }
 
     async fetchPosts() {
@@ -49,30 +35,27 @@ class PostService {
         }
     }
 
-    async uploadToSupabase(file) {
+    async uploadImage(file) {
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `posts/${fileName}`;
+            const formData = new FormData();
+            formData.append('image', file);
 
-            const { error } = await this.supabase.storage
-                .from('images')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
+            const response = await fetch(`${this.baseUrl}/upload/image`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: formData
+            });
 
-            if (error) {
-                throw error;
+            if (!response.ok) {
+                throw new Error('Greška pri uploadu slike');
             }
 
-            const { data: { publicUrl } } = this.supabase.storage
-                .from('images')
-                .getPublicUrl(filePath);
-
-            return publicUrl;
+            const data = await response.json();
+            return data.data.image_url;
         } catch (error) {
-            console.error('Supabase upload error:', error);
+            console.error('Upload error:', error);
             throw error;
         }
     }
@@ -82,7 +65,7 @@ class PostService {
             let imageUrl = null;
             
             if (imageFile) {
-                imageUrl = await this.uploadToSupabase(imageFile);
+                imageUrl = await this.uploadImage(imageFile);
             }
             
             const payload = {

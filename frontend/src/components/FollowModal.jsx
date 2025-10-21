@@ -39,7 +39,7 @@ const FollowModal = observer(({ profileStore }) => {
               {profileStore.modalData.map(user => (
                 <Link 
                   key={user.id} 
-                  to={`/${user.username}`}
+                  to={`/profile/${user.username}`}
                   className="user-item"
                   onClick={() => profileStore.closeModal()}
                 >

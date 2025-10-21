@@ -175,7 +175,7 @@ const Profile = observer(() => {
                         </div>
                         <div 
                             className="nav-item"
-                            onClick={() => navigate(`/${userStore.user?.username}`)}
+                            onClick={() => navigate(`/profile/${userStore.user?.username}`)}
                         >
                             <User className="nav-icon" />
                             <span>Profile</span>
@@ -344,7 +344,7 @@ const Profile = observer(() => {
                                     </div>
                                     <div className="post-content">
                                         <div className="post-header">
-                                            <Link to={`/${post.username}`} className="post-author-link">
+                                            <Link to={`/profile/${post.username}`} className="post-author-link">
                                                 <span className="post-author">{post.display_name || post.username}</span>
                                             </Link>
                                             <span className="post-handle">@{post.username}</span>
@@ -395,7 +395,14 @@ const Profile = observer(() => {
                                                 <div className="comments-list">
                                                     {profileStore.comments[post.id]?.map(comment => (
                                                         <div key={comment.id} className="comment-item">
-                                                            <div className="comment-header">
+                                                            <div 
+                                                                className="comment-header" 
+                                                                style={{cursor: 'pointer'}}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigate(`/profile/${comment.username}`);
+                                                                }}
+                                                            >
                                                                 <div className="comment-avatar">
                                                                     {comment.avatar_url ? (
                                                                         <img src={comment.avatar_url} alt={comment.username} />

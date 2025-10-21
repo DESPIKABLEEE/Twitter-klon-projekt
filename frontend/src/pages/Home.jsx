@@ -208,7 +208,7 @@ const Home = observer(() => {
                         </div>
                         <div 
                             className="nav-item"
-                            onClick={() => navigate(`/${userStore.user?.username}`)}
+                            onClick={() => navigate(`/profile/${userStore.user?.username}`)}
                         >
                             <User className="nav-icon" />
                             <span>Profile</span>
@@ -262,7 +262,7 @@ const Home = observer(() => {
 
                 <div className="tweet-compose">
                     <div className="compose-container">
-                        <Link to={`/${userStore.user?.username}`} className="compose-avatar">
+                        <Link to={`/profile/${userStore.user?.username}`} className="compose-avatar">
                             <User size={24} />
                         </Link>
                         <form onSubmit={handleCreatePost} className="compose-form">
@@ -343,7 +343,7 @@ const Home = observer(() => {
                                     </div>
                                     <div className="post-content">
                                         <div className="post-header">
-                                            <Link to={`/${post.username}`} className="post-author-link">
+                                            <Link to={`/profile/${post.username}`} className="post-author-link">
                                                 <span className="post-author">{post.display_name || post.username}</span>
                                             </Link>
                                             <span className="post-handle">@{post.username}</span>
@@ -400,7 +400,13 @@ const Home = observer(() => {
                                                 <div className="comments-list">
                                                     {homeStore.comments[post.id]?.map((comment, commentIndex) => (
                                                         <div key={`comment-${comment.id}-${commentIndex}`} className="comment-item" style={{padding: '0.5rem 0', borderBottom: '1px solid rgb(47, 51, 54)'}}>
-                                                            <div style={{display: 'flex', alignItems: 'center', marginBottom: '0.25rem'}}>
+                                                            <div 
+                                                                style={{display: 'flex', alignItems: 'center', marginBottom: '0.25rem', cursor: 'pointer'}}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigate(`/profile/${comment.username}`);
+                                                                }}
+                                                            >
                                                                 <div style={{width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: '#1d9bf0', marginRight: '0.5rem'}}></div>
                                                                 <span style={{fontWeight: '700', marginRight: '0.5rem'}}>{comment.display_name || comment.username}</span>
                                                                 <span style={{color: '#71767b'}}>@{comment.username}</span>
