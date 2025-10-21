@@ -16,23 +16,22 @@ async function initializeDatabase() {
       if (statement.trim()) {
         try {
           await promisePool.query(statement);
-          console.log('✓ Executed:', statement.substring(0, 50) + '...');
+          console.log('Executed:', statement.substring(0, 50) + '...');
         } catch (error) {
           if (error.code === 'ER_TABLE_EXISTS_ERROR' || error.code === 'ER_DB_CREATE_EXISTS' || error.message.includes('already exists')) {
-            console.log('ℹ Already exists, skipping...');
+            console.log('Already exists, skipping...');
           } else if (error.code === 'ER_NO_DB_ERROR') {
-            console.log('ℹ Database creation in progress...');
+            console.log('Database creation in progress...');
           } else {
-            console.warn('⚠ Warning:', error.message.substring(0, 100));
+            console.warn('Warning:', error.message.substring(0, 100));
           }
         }
       }
     }
     
-    console.log('✓ Database initialization completed!');
+    console.log('Database initialization completed!');
   } catch (error) {
-    console.error('✗ Failed to initialize database:', error.message);
-    // Don't throw, just log - server can still run without tables for testing
+    console.error('Failed to initialize database:', error.message);
   }
 }
 

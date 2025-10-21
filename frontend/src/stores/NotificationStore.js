@@ -35,7 +35,9 @@ class NotificationStore {
 
         this.currentToken = token;
 
-        const socketUrl = 'http://localhost:6969';
+        const socketUrl = import.meta.env.PROD 
+            ? 'https://twitter-klon-projekt-production.up.railway.app'
+            : 'http://localhost:6969';
 
         this.socket = io(socketUrl, {
             auth: { token },
