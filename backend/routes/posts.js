@@ -45,12 +45,13 @@ router.get('/', optionalAuth, async (req, res) => {
         u.username,
         u.display_name,
         u.avatar_url,
-        ${req.user ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked` : '0 as user_liked'}
+        ${req.user ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked` : '0 as user_liked'},
+        ${req.user ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked` : '0 as user_bookmarked'}
       FROM posts p
       JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC
       LIMIT 10
-    `, req.user ? [req.user.id] : []);
+    `, req.user ? [req.user.id, req.user.id] : []);
 
     console.log('finish');
 
@@ -59,7 +60,8 @@ router.get('/', optionalAuth, async (req, res) => {
       data: {
         posts: posts.map(post => ({
           ...post,
-          user_liked: Boolean(post.user_liked)
+          user_liked: Boolean(post.user_liked),
+          user_bookmarked: Boolean(post.user_bookmarked)
         })),
         pagination: {
           page: 1,
@@ -97,7 +99,8 @@ router.get('/following', authenticateToken, async (req, res) => {
         u.username,
         u.display_name,
         u.avatar_url,
-        (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id AND l.user_id = ?) as user_liked
+        (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id AND l.user_id = ?) as user_liked,
+        (SELECT COUNT(*) FROM bookmarks b WHERE b.post_id = p.id AND b.user_id = ?) as user_bookmarked
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE (
@@ -108,7 +111,7 @@ router.get('/following', authenticateToken, async (req, res) => {
       )
       ORDER BY p.created_at DESC
       LIMIT 50
-    `, [userId, userId, userId]); //LIMIT maknit?
+    `, [userId, userId, userId, userId]); //LIMIT maknit?
 
     console.log('broj psotova :', posts.length); // more debug
 
@@ -117,7 +120,8 @@ router.get('/following', authenticateToken, async (req, res) => {
       data: {
         posts: posts.map(post => ({
           ...post,
-          user_liked: Boolean(post.user_liked)
+          user_liked: Boolean(post.user_liked),
+          user_bookmarked: Boolean(post.user_bookmarked)
         })),
         pagination: {
           page: 1,
@@ -158,11 +162,12 @@ router.get('/:id', optionalAuth, async (req, res) => {
         u.username,
         u.display_name,
         u.avatar_url,
-        ${req.user ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked` : '0 as user_liked'}
+        ${req.user ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked` : '0 as user_liked'},
+        ${req.user ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked` : '0 as user_bookmarked'}
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE p.id = ?
-    `, req.user ? [req.user.id, postId] : [postId]);
+    `, req.user ? [req.user.id, req.user.id, postId] : [postId]);
 
     if (posts.length === 0) {
       return res.status(404).json({
@@ -175,7 +180,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
       success: true,
       data: {
         ...posts[0],
-        user_liked: Boolean(posts[0].user_liked)
+        user_liked: Boolean(posts[0].user_liked),
+        user_bookmarked: Boolean(posts[0].user_bookmarked)
       }
     });
 
@@ -686,6 +692,114 @@ router.post('/:id/like', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'error oko likea',
+      error: error.message
+    });
+  }
+});
+
+// Bookmark endpoint - identičan kao like
+router.post('/:id/bookmark', authenticateToken, async (req, res) => {
+  try {
+    const postId = parseInt(req.params.id);
+    const userId = req.user.id;
+    
+    if (!postId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing data'
+      });
+    }
+
+    const posts = await query(
+      'SELECT id FROM posts WHERE id = ?',
+      [postId]
+    );
+    
+    if (posts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    const existingBookmark = await query(
+      'SELECT id FROM bookmarks WHERE post_id = ? AND user_id = ?',
+      [postId, userId]
+    );
+
+    let isBookmarked = false;
+    if (existingBookmark.length > 0) {
+      // Remove bookmark
+      await query('DELETE FROM bookmarks WHERE post_id = ? AND user_id = ?', 
+        [postId, userId]);
+      isBookmarked = false;
+    } else {
+      // Add bookmark
+      await query('INSERT INTO bookmarks (post_id, user_id) VALUES (?, ?)', 
+        [postId, userId]);
+      isBookmarked = true;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        isBookmarked: isBookmarked,
+        postId: postId
+      }
+    });
+
+  } catch (error) {
+    console.log('BOOKMARK_ERROR', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error with bookmark',
+      error: error.message
+    });
+  }
+});
+
+// Get user's bookmarks
+router.get('/user/bookmarks', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const bookmarks = await query(`
+      SELECT 
+        p.id,
+        p.content,
+        p.image_url,
+        p.likes_count,
+        p.comments_count,
+        p.created_at,
+        u.id as user_id,
+        u.username,
+        u.display_name,
+        u.avatar_url,
+        (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked,
+        (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked
+      FROM bookmarks b
+      JOIN posts p ON b.post_id = p.id
+      JOIN users u ON p.user_id = u.id
+      WHERE b.user_id = ?
+      ORDER BY b.created_at DESC
+      LIMIT 20
+    `, [userId, userId, userId]);
+
+    res.json({
+      success: true,
+      data: {
+        posts: bookmarks.map(post => ({
+          ...post,
+          user_liked: Boolean(post.user_liked),
+          user_bookmarked: Boolean(post.user_bookmarked)
+        }))
+      }
+    });
+  } catch (error) {
+    console.log('GET_BOOKMARKS_ERROR', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching bookmarks',
       error: error.message
     });
   }

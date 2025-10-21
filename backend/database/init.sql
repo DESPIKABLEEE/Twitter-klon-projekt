@@ -98,6 +98,19 @@ CREATE TABLE IF NOT EXISTS notifications (
     INDEX idx_is_read (is_read)
 );
 
+-- Bookmarks table
+CREATE TABLE IF NOT EXISTS bookmarks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_bookmark (post_id, user_id),
+    INDEX idx_post_id (post_id),
+    INDEX idx_user_id (user_id)
+);
+
 UPDATE users SET 
     followers_count = (SELECT COUNT(*) FROM follows WHERE following_id = users.id),
     following_count = (SELECT COUNT(*) FROM follows WHERE follower_id = users.id),

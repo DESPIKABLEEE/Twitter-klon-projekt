@@ -242,6 +242,17 @@ class ProfileStore {
     }
   }
 
+  async bookmarkPost(postId) {
+    try {
+      const response = await PostService.bookmarkPost(postId);
+      this.updatePost(postId, {
+        user_bookmarked: response.data.isBookmarked
+      });
+    } catch (error) {
+      console.error('Error bookmarking post:', error);
+    }
+  }
+
   async fetchComments(postId) {
     try {
       const response = await PostService.fetchComments(postId);

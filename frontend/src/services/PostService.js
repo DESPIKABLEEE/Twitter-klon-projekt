@@ -157,6 +157,37 @@ class PostService {
             throw error;
         }
     }
+
+    async bookmarkPost(postId) {
+        try {
+            const response = await fetch(`${this.baseUrl}/posts/${postId}/bookmark`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            if (!response.ok) throw new Error('Failed to bookmark post');
+            return await response.json();
+        } catch (error) {
+            console.error('Error bookmarking post:', error);
+            throw error;
+        }
+    }
+
+    async fetchBookmarks() {
+        try {
+            const response = await fetch(`${this.baseUrl}/posts/user/bookmarks`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            if (!response.ok) throw new Error('Failed to fetch bookmarks');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching bookmarks:', error);
+            throw error;
+        }
+    }
 }
 
 export default new PostService();

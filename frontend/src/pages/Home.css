@@ -508,6 +508,14 @@
     background-color: rgba(249, 24, 128, 0.1);
 }
 
+.post-action.bookmarked {
+    color: #1d9bf0;
+}
+
+.post-action.bookmarked:hover {
+    background-color: rgba(29, 155, 240, 0.1);
+}
+
 .action-icon {
     width: 1.25rem;
     height: 1.25rem;

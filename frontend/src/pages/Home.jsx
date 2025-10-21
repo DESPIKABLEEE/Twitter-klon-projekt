@@ -118,6 +118,15 @@ const Home = observer(() => {
         }
     };
 
+    const handleBookmarkPost = async (postId) => {
+        try {
+            await homeStore.bookmarkPost(postId);
+        } catch (error) {
+            console.log('Error sa bookmarkkom', error);
+            alert('Failed bookmark/unbookmark');
+        }
+    };
+
     const handleToggleComments = async (postId) => {
         if (homeStore.showComments[postId]) {
             homeStore.toggleComments(postId);
@@ -202,7 +211,7 @@ const Home = observer(() => {
                             <Envelope className="nav-icon" />
                             <span>Messages</span>
                         </div>
-                        <div className="nav-item">
+                        <div className="nav-item" onClick={() => navigate('/bookmarks')}>
                             <BookmarkSimple className="nav-icon" />
                             <span>Bookmarks</span>
                         </div>
@@ -390,8 +399,11 @@ const Home = observer(() => {
                                             <button className="post-action">
                                                 <RocketLaunch className="action-icon" />
                                             </button>
-                                            <button className="post-action">
-                                                <BookmarkSimple className="action-icon" />
+                                            <button 
+                                                className={`post-action ${post.user_bookmarked ? 'bookmarked' : ''}`}
+                                                onClick={() => handleBookmarkPost(post.id)}
+                                            >
+                                                <BookmarkSimple className="action-icon" weight={post.user_bookmarked ? 'fill' : 'regular'} />
                                             </button>
                                         </div>
                                         

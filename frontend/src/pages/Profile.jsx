@@ -80,6 +80,10 @@ const Profile = observer(() => {
         await profileStore.likePost(postId);
     };
 
+    const handleBookmarkPost = async (postId) => {
+        await profileStore.bookmarkPost(postId);
+    };
+
     const handleToggleComments = async (postId) => {
         if (profileStore.showComments[postId]) {
             profileStore.toggleComments(postId);
@@ -169,7 +173,10 @@ const Profile = observer(() => {
                             <Envelope className="nav-icon" />
                             <span>Messages</span>
                         </div>
-                        <div className="nav-item">
+                        <div 
+                            className="nav-item"
+                            onClick={() => navigate('/bookmarks')}
+                        >
                             <BookmarkSimple className="nav-icon" />
                             <span>Bookmarks</span>
                         </div>
@@ -385,8 +392,11 @@ const Profile = observer(() => {
                                                 <Heart className="action-icon" size={16} weight={post.user_liked ? 'fill' : 'regular'} />
                                                 <span>{post.likes_count || 0}</span>
                                             </button>
-                                            <button className="post-action">
-                                                <BookmarkSimple className="action-icon" size={16} />
+                                            <button 
+                                                className={`post-action ${post.user_bookmarked ? 'bookmarked' : ''}`}
+                                                onClick={() => handleBookmarkPost(post.id)}
+                                            >
+                                                <BookmarkSimple className="action-icon" size={16} weight={post.user_bookmarked ? 'fill' : 'regular'} />
                                             </button>
                                         </div>
                                         

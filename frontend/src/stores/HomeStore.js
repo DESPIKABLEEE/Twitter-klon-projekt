@@ -257,6 +257,32 @@ class HomeStore {
         }
     };
 
+    bookmarkPost = async (postId) => {
+        try {
+            const post = this.posts.find(p => p.id === postId);
+            if (post) {
+                const wasBookmarked = post.user_bookmarked || false;
+                this.updatePost(postId, {
+                    user_bookmarked: !wasBookmarked
+                });
+
+                const response = await PostService.bookmarkPost(postId);
+                
+                this.updatePost(postId, {
+                    user_bookmarked: response.data.isBookmarked
+                });
+            }
+        } catch (error) {
+            const post = this.posts.find(p => p.id === postId);
+            if (post) {
+                this.updatePost(postId, {
+                    user_bookmarked: !post.user_bookmarked
+                });
+            }
+            console.error('Error toggling bookmark:', error);
+        }
+    };
+
     fetchComments = async (postId) => {
         try {
             const response = await PostService.fetchComments(postId);

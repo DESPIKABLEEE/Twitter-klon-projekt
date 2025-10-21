@@ -5,6 +5,7 @@ import LoginStore from './LoginStore'
 import HomeStore from './HomeStore'
 import NotificationStore from './NotificationStore'
 import SuggestionStore from './SuggestionStore'
+import BookmarkStore from './BookmarkStore'
 
 class RootStore {
   constructor() {
@@ -15,6 +16,7 @@ class RootStore {
     this.homeStore = new HomeStore()
     this.notificationStore = new NotificationStore()
     this.suggestionStore = new SuggestionStore()
+    this.bookmarkStore = new BookmarkStore()
   }
 }
 
@@ -27,5 +29,6 @@ export const loginStore = rootStore.loginStore
 export const homeStore = rootStore.homeStore
 export const notificationStore = rootStore.notificationStore
 export const suggestionStore = rootStore.suggestionStore
+export const bookmarkStore = rootStore.bookmarkStore
 
 export default rootStore
