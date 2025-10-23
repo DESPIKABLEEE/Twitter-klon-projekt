@@ -1,15 +1,10 @@
 import { makeAutoObservable } from 'mobx';
 import PostService from '../services/PostService';
-import { getApiBaseUrl } from '../config/api';
 
-class BookmarkStore {
-    bookmarks = [];
-    bookmarksLoading = false;
+class RepostStore {
+    reposts = [];
+    repostsLoading = false;
     error = '';
-    showSearchModal = false;
-    searchQuery = '';
-    searchResults = [];
-    searchLoading = false;
 
     showComments = {};
     comments = {};
@@ -20,77 +15,31 @@ class BookmarkStore {
         makeAutoObservable(this);
     }
 
-    setBookmarks = (bookmarks) => {
-        this.bookmarks = Array.isArray(bookmarks) ? bookmarks : [];
+    setReposts = (reposts) => {
+        this.reposts = Array.isArray(reposts) ? reposts : [];
     };
 
-    addBookmark = (post) => {
-        this.bookmarks.unshift(post);
+    addRepost = (post) => {
+        this.reposts.unshift(post);
     };
 
-    removeBookmark = (postId) => {
-        this.bookmarks = this.bookmarks.filter(post => post.id !== postId);
+    removeRepost = (postId) => {
+        this.reposts = this.reposts.filter(post => post.id !== postId);
     };
 
-    updateBookmark = (postId, updates) => {
-        const postIndex = this.bookmarks.findIndex(post => post.id === postId);
+    updateRepost = (postId, updates) => {
+        const postIndex = this.reposts.findIndex(post => post.id === postId);
         if (postIndex !== -1) {
-            this.bookmarks[postIndex] = { ...this.bookmarks[postIndex], ...updates };
+            this.reposts[postIndex] = { ...this.reposts[postIndex], ...updates };
         }
     };
 
-    setBookmarksLoading = (value) => {
-        this.bookmarksLoading = value;
+    setRepostsLoading = (value) => {
+        this.repostsLoading = value;
     };
 
     setError = (error) => {
         this.error = error;
-    };
-
-    setShowSearchModal = (value) => {
-        this.showSearchModal = value;
-        if (!value) {
-            this.searchQuery = '';
-            this.searchResults = [];
-        }
-    };
-
-    setSearchQuery = (query) => {
-        this.searchQuery = query;
-    };
-
-    setSearchResults = (results) => {
-        this.searchResults = results;
-    };
-
-    setSearchLoading = (value) => {
-        this.searchLoading = value;
-    };
-
-    searchUsers = async (query) => {
-        if (!query || query.trim().length < 2) {
-            this.setSearchResults([]);
-            return;
-        }
-
-        try {
-            this.setSearchLoading(true);
-            const response = await fetch(`${getApiBaseUrl()}/users/search?q=${encodeURIComponent(query)}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            if (!response.ok) throw new Error('Search failed');
-
-            const data = await response.json();
-            this.setSearchResults(data.data.users || []);
-        } catch (error) {
-            console.error('Search error:', error);
-            this.setSearchResults([]);
-        } finally {
-            this.setSearchLoading(false);
-        }
     };
 
     toggleComments = (postId) => {
@@ -116,45 +65,45 @@ class BookmarkStore {
         this.commentLoading[postId] = value;
     };
 
-    fetchBookmarks = async () => {
+    fetchReposts = async (username) => {
         try {
-            this.setBookmarksLoading(true);
+            this.setRepostsLoading(true);
             this.setError('');
-            const response = await PostService.fetchBookmarks();
+            const response = await PostService.fetchUserReposts(username);
             if (response.success) {
-                this.setBookmarks(response.data.posts);
+                this.setReposts(response.data.posts);
             }
             return response;
         } catch (error) {
             this.setError(error.message);
-            console.error('Error fetching bookmarks:', error);
+            console.error('Error fetching reposts:', error);
             throw error;
         } finally {
-            this.setBookmarksLoading(false);
+            this.setRepostsLoading(false);
         }
     };
 
     likePost = async (postId) => {
         try {
-            const post = this.bookmarks.find(p => p.id === postId);
+            const post = this.reposts.find(p => p.id === postId);
             if (post) {
                 const wasLiked = post.user_liked;
-                this.updateBookmark(postId, {
+                this.updateRepost(postId, {
                     user_liked: !wasLiked,
                     likes_count: wasLiked ? post.likes_count - 1 : post.likes_count + 1
                 });
 
                 const response = await PostService.likePost(postId);
                 
-                this.updateBookmark(postId, {
+                this.updateRepost(postId, {
                     user_liked: response.data.isLiked,
                     likes_count: response.data.likesCount
                 });
             }
         } catch (error) {
-            const post = this.bookmarks.find(p => p.id === postId);
+            const post = this.reposts.find(p => p.id === postId);
             if (post) {
-                this.updateBookmark(postId, {
+                this.updateRepost(postId, {
                     user_liked: !post.user_liked,
                     likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1
                 });
@@ -163,25 +112,54 @@ class BookmarkStore {
         }
     };
 
+    repostPost = async (postId) => {
+        try {
+            const post = this.reposts.find(p => p.id === postId);
+            if (post) {
+                const wasReposted = post.user_reposted || false;
+                this.updateRepost(postId, {
+                    user_reposted: !wasReposted,
+                    retweets_count: wasReposted ? post.retweets_count - 1 : post.retweets_count + 1
+                });
+
+                const response = await PostService.repostPost(postId);
+                
+                this.updateRepost(postId, {
+                    user_reposted: response.data.isReposted,
+                    retweets_count: response.data.repostsCount
+                });
+            }
+        } catch (error) {
+            const post = this.reposts.find(p => p.id === postId);
+            if (post) {
+                this.updateRepost(postId, {
+                    user_reposted: !post.user_reposted,
+                    retweets_count: post.user_reposted ? post.retweets_count - 1 : post.retweets_count + 1
+                });
+            }
+            console.error('Error toggling repost:', error);
+        }
+    };
+
     bookmarkPost = async (postId) => {
         try {
-            const post = this.bookmarks.find(p => p.id === postId);
+            const post = this.reposts.find(p => p.id === postId);
             if (post) {
-                const wasBookmarked = post.user_bookmarked;
-                this.updateBookmark(postId, {
+                const wasBookmarked = post.user_bookmarked || false;
+                this.updateRepost(postId, {
                     user_bookmarked: !wasBookmarked
                 });
 
                 const response = await PostService.bookmarkPost(postId);
                 
-                this.updateBookmark(postId, {
+                this.updateRepost(postId, {
                     user_bookmarked: response.data.isBookmarked
                 });
             }
         } catch (error) {
-            const post = this.bookmarks.find(p => p.id === postId);
+            const post = this.reposts.find(p => p.id === postId);
             if (post) {
-                this.updateBookmark(postId, {
+                this.updateRepost(postId, {
                     user_bookmarked: !post.user_bookmarked
                 });
             }
@@ -209,9 +187,9 @@ class BookmarkStore {
                 this.addComment(postId, response.data);
                 this.setNewComment(postId, '');
                 
-                const post = this.bookmarks.find(p => p.id === postId);
+                const post = this.reposts.find(p => p.id === postId);
                 if (post) {
-                    this.updateBookmark(postId, {
+                    this.updateRepost(postId, {
                         comments_count: post.comments_count + 1
                     });
                 }
@@ -227,7 +205,7 @@ class BookmarkStore {
         try {
             const response = await PostService.deletePost(postId);
             if (response.success) {
-                this.removeBookmark(postId);
+                this.removeRepost(postId);
             }
             return response;
         } catch (error) {
@@ -290,44 +268,6 @@ class BookmarkStore {
         }
     };
 
-    handleBookmarkPost = async (postId) => {
-        try {
-            await this.bookmarkPost(postId);
-        } catch (error) {
-            console.log('Error with bookmark:', error);
-            throw error;
-        }
-    };
-
-    repostPost = async (postId) => {
-        try {
-            const post = this.bookmarks.find(p => p.id === postId);
-            if (post) {
-                const wasReposted = post.user_reposted;
-                this.updateBookmark(postId, {
-                    user_reposted: !wasReposted,
-                    retweets_count: wasReposted ? post.retweets_count - 1 : post.retweets_count + 1
-                });
-
-                const response = await PostService.repostPost(postId);
-                
-                this.updateBookmark(postId, {
-                    user_reposted: response.data.isReposted,
-                    retweets_count: response.data.repostsCount
-                });
-            }
-        } catch (error) {
-            const post = this.bookmarks.find(p => p.id === postId);
-            if (post) {
-                this.updateBookmark(postId, {
-                    user_reposted: !post.user_reposted,
-                    retweets_count: post.user_reposted ? post.retweets_count - 1 : post.retweets_count + 1
-                });
-            }
-            console.error('Error toggling repost:', error);
-        }
-    };
-
     handleRepostPost = async (postId) => {
         try {
             await this.repostPost(postId);
@@ -337,14 +277,23 @@ class BookmarkStore {
         }
     };
 
-    initialize = async () => {
+    handleBookmarkPost = async (postId) => {
         try {
-            await this.fetchBookmarks();
+            await this.bookmarkPost(postId);
         } catch (error) {
-            console.error('Error initializing bookmarks:', error);
-            this.setError('Failed to load bookmarks');
+            console.log('Error with bookmark:', error);
+            throw error;
+        }
+    };
+
+    initialize = async (username) => {
+        try {
+            await this.fetchReposts(username);
+        } catch (error) {
+            console.error('Error initializing reposts:', error);
+            this.setError('Failed to load reposts');
         }
     };
 }
 
-export default BookmarkStore;
+export default RepostStore;

@@ -283,6 +283,35 @@ class HomeStore {
         }
     };
 
+    repostPost = async (postId) => {
+        try {
+            const post = this.posts.find(p => p.id === postId);
+            if (post) {
+                const wasReposted = post.user_reposted || false;
+                this.updatePost(postId, {
+                    user_reposted: !wasReposted,
+                    retweets_count: wasReposted ? post.retweets_count - 1 : post.retweets_count + 1
+                });
+
+                const response = await PostService.repostPost(postId);
+                
+                this.updatePost(postId, {
+                    user_reposted: response.data.isReposted,
+                    retweets_count: response.data.repostsCount
+                });
+            }
+        } catch (error) {
+            const post = this.posts.find(p => p.id === postId);
+            if (post) {
+                this.updatePost(postId, {
+                    user_reposted: !post.user_reposted,
+                    retweets_count: post.user_reposted ? post.retweets_count - 1 : post.retweets_count + 1
+                });
+            }
+            console.error('Error toggling repost:', error);
+        }
+    };
+
     fetchComments = async (postId) => {
         try {
             const response = await PostService.fetchComments(postId);

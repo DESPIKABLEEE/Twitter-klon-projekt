@@ -505,7 +505,7 @@
 }
 
 .post-action.liked:hover {
-    background-color: rgba(249, 24, 128, 0.1);
+    color: #f91880;
 }
 
 .post-action.bookmarked {
@@ -513,7 +513,15 @@
 }
 
 .post-action.bookmarked:hover {
-    background-color: rgba(29, 155, 240, 0.1);
+    color: #1d9bf0;
+}
+
+.post-action.reposted {
+    color: #1d9bf0;
+}
+
+.post-action.reposted:hover {
+    color: #1d9bf0;
 }
 
 .action-icon {
@@ -630,10 +638,6 @@
     .nav-item {
         justify-content: flex-start;
         padding: 0.65rem 0.75rem;
-    }
-
-    .nav-item span {
-        display: inline;
     }
 
     .nav-icon {

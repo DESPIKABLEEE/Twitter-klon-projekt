@@ -21,6 +21,10 @@ class ProfileStore {
   isEditing = false
   editBio = ''
   
+  activeTab = 'posts' // 'posts', 'replies', 'media', 'reposts'
+  reposts = []
+  repostsLoading = false
+  
   constructor() {
     makeAutoObservable(this)
   }
@@ -253,6 +257,18 @@ class ProfileStore {
     }
   }
 
+  async repostPost(postId) {
+    try {
+      const response = await PostService.repostPost(postId);
+      this.updatePost(postId, {
+        user_reposted: response.data.isReposted,
+        retweets_count: response.data.repostsCount
+      });
+    } catch (error) {
+      console.error('Error reposting post:', error);
+    }
+  }
+
   async fetchComments(postId) {
     try {
       const response = await PostService.fetchComments(postId);
@@ -335,6 +351,109 @@ class ProfileStore {
     this.showUserDropdown = false
     this.isEditing = false
     this.editBio = ''
+    this.activeTab = 'posts'
+    this.reposts = []
+    this.repostsLoading = false
+  }
+
+  setActiveTab(tab) {
+    this.activeTab = tab
+    if (tab === 'reposts') {
+      this.fetchReposts(this.profileData.user.username)
+    }
+  }
+
+  setReposts(reposts) {
+    this.reposts = Array.isArray(reposts) ? reposts : []
+  }
+
+  setRepostsLoading(loading) {
+    this.repostsLoading = loading
+  }
+
+  updateRepost(postId, updates) {
+    const postIndex = this.reposts.findIndex(post => post.id === postId)
+    if (postIndex !== -1) {
+      this.reposts[postIndex] = { ...this.reposts[postIndex], ...updates }
+    }
+  }
+
+  async fetchReposts(username) {
+    try {
+      this.setRepostsLoading(true)
+      const response = await PostService.fetchUserReposts(username)
+      if (response.success) {
+        this.setReposts(response.data.posts)
+      }
+    } catch (error) {
+      console.error('Error fetching reposts:', error)
+    } finally {
+      this.setRepostsLoading(false)
+    }
+  }
+
+  async repostProfilePost(postId) {
+    try {
+      const post = this.reposts.find(p => p.id === postId)
+      if (post) {
+        const wasReposted = post.user_reposted || false
+        this.updateRepost(postId, {
+          user_reposted: !wasReposted,
+          retweets_count: wasReposted ? post.retweets_count - 1 : post.retweets_count + 1
+        })
+
+        const response = await PostService.repostPost(postId)
+        
+        this.updateRepost(postId, {
+          user_reposted: response.data.isReposted,
+          retweets_count: response.data.repostsCount
+        })
+      }
+    } catch (error) {
+      console.error('Error with repost:', error)
+    }
+  }
+
+  async likeRepost(postId) {
+    try {
+      const post = this.reposts.find(p => p.id === postId)
+      if (post) {
+        const wasLiked = post.user_liked
+        this.updateRepost(postId, {
+          user_liked: !wasLiked,
+          likes_count: wasLiked ? post.likes_count - 1 : post.likes_count + 1
+        })
+
+        const response = await PostService.likePost(postId)
+        
+        this.updateRepost(postId, {
+          user_liked: response.data.isLiked,
+          likes_count: response.data.likesCount
+        })
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+    }
+  }
+
+  async bookmarkRepost(postId) {
+    try {
+      const post = this.reposts.find(p => p.id === postId)
+      if (post) {
+        const wasBookmarked = post.user_bookmarked || false
+        this.updateRepost(postId, {
+          user_bookmarked: !wasBookmarked
+        })
+
+        const response = await PostService.bookmarkPost(postId)
+        
+        this.updateRepost(postId, {
+          user_bookmarked: response.data.isBookmarked
+        })
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
+    }
   }
 }
 

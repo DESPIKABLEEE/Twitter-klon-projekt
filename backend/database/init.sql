@@ -111,6 +111,19 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     INDEX idx_user_id (user_id)
 );
 
+-- Reposts table
+CREATE TABLE IF NOT EXISTS reposts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_repost (post_id, user_id),
+    INDEX idx_post_id (post_id),
+    INDEX idx_user_id (user_id)
+);
+
 UPDATE users SET 
     followers_count = (SELECT COUNT(*) FROM follows WHERE following_id = users.id),
     following_count = (SELECT COUNT(*) FROM follows WHERE follower_id = users.id),
@@ -118,4 +131,5 @@ UPDATE users SET
 
 UPDATE posts SET 
     likes_count = (SELECT COUNT(*) FROM likes WHERE post_id = posts.id),
-    comments_count = (SELECT COUNT(*) FROM comments WHERE post_id = posts.id);
+    comments_count = (SELECT COUNT(*) FROM comments WHERE post_id = posts.id),
+    retweets_count = (SELECT COUNT(*) FROM reposts WHERE post_id = posts.id);

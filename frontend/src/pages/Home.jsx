@@ -15,7 +15,6 @@ import {
     House,
     MagnifyingGlass,
     Bell,
-    Envelope,
     BookmarkSimple,
     User,
     DotsThree,
@@ -207,10 +206,6 @@ const Home = observer(() => {
                         <div className="nav-item notification-nav">
                             <NotificationBell />
                         </div>
-                        <div className="nav-item">
-                            <Envelope className="nav-icon" />
-                            <span>Messages</span>
-                        </div>
                         <div className="nav-item" onClick={() => navigate('/bookmarks')}>
                             <BookmarkSimple className="nav-icon" />
                             <span>Bookmarks</span>
@@ -396,8 +391,12 @@ const Home = observer(() => {
                                                 <Heart className="action-icon" weight={post.user_liked ? 'fill' : 'regular'} />
                                                 <span>{post.likes_count}</span>
                                             </button>
-                                            <button className="post-action">
+                                            <button 
+                                                className={`post-action ${post.user_reposted ? 'reposted' : ''}`}
+                                                onClick={() => homeStore.repostPost(post.id)}
+                                            >
                                                 <RocketLaunch className="action-icon" />
+                                                <span>{post.retweets_count || 0}</span>
                                             </button>
                                             <button 
                                                 className={`post-action ${post.user_bookmarked ? 'bookmarked' : ''}`}

@@ -1,12 +1,34 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react';
 import { useNavigate } from 'react-router-dom';
 import { userStore, bookmarkStore } from '../stores';
+import NotificationBell from '../components/NotificationBell';
+import WhoToFollow from '../components/WhoToFollow';
+import PremiumSubscription from '../components/PremiumSubscription';
+import SearchModal from '../components/SearchModal';
 import './Home.css';
-import { Trash, ChatCircleText, Heart, RocketLaunch, BookmarkSimple } from "@phosphor-icons/react";
+import { Trash, ChatCircleText, Heart, RocketLaunch, BookmarkSimple, House, MagnifyingGlass, User } from "@phosphor-icons/react";
 
 const Bookmarks = observer(() => {
     const navigate = useNavigate();
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (showUserDropdown) {
+                setShowUserDropdown(false);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [showUserDropdown]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+    };
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -46,7 +68,15 @@ const Bookmarks = observer(() => {
                     
                     <nav>
                         <div className="nav-item" onClick={() => navigate('/')}>
+                            <House className="nav-icon" weight="fill" />
                             <span>Home</span>
+                        </div>
+                        <div className="nav-item" onClick={() => bookmarkStore.setShowSearchModal(true)}>
+                            <MagnifyingGlass className="nav-icon" />
+                            <span>Search</span>
+                        </div>
+                        <div className="nav-item notification-nav">
+                            <NotificationBell />
                         </div>
                         <div className="nav-item active">
                             <BookmarkSimple className="nav-icon" weight="fill" />
@@ -56,9 +86,27 @@ const Bookmarks = observer(() => {
                             className="nav-item"
                             onClick={() => navigate(`/profile/${userStore.user?.username}`)}
                         >
+                            <User className="nav-icon" />
                             <span>Profile</span>
                         </div>
                     </nav>
+                    
+                    <div className="user-menu" onClick={(e) => {
+                        e.stopPropagation();
+                        setShowUserDropdown(!showUserDropdown);
+                    }}>
+                        <div className="user-info">
+                            <User className="user-profile-icon" size={24} />
+                            <span className="user-name">{userStore.user?.display_name || userStore.user?.username}</span>
+                        </div>
+                        {showUserDropdown && (
+                            <div className="user-dropdown">
+                                <button onClick={handleLogout} className="logout-dropdown-btn">
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -126,8 +174,12 @@ const Bookmarks = observer(() => {
                                                 <Heart className="action-icon" weight={post.user_liked ? 'fill' : 'regular'} />
                                                 <span>{post.likes_count}</span>
                                             </button>
-                                            <button className="post-action">
+                                            <button 
+                                                className={`post-action ${post.user_reposted ? 'reposted' : ''}`}
+                                                onClick={() => bookmarkStore.handleRepostPost(post.id)}
+                                            >
                                                 <RocketLaunch className="action-icon" />
+                                                <span>{post.retweets_count || 0}</span>
                                             </button>
                                             <button 
                                                 className={`post-action ${post.user_bookmarked ? 'bookmarked' : ''}`}
@@ -187,6 +239,39 @@ const Bookmarks = observer(() => {
                     )}
                 </div>
             </div>
+
+            <div className="right-sidebar">
+                <PremiumSubscription />
+                
+                <div className="trending-widget">
+                    <div className="widget-header">
+                        <h2 className="widget-title">What's happening</h2>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Trending in Technology</div>
+                        <div className="trending-topic">#WebDevelopment</div>
+                        <div className="trending-tweets">42.1K posts</div>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Trending</div>
+                        <div className="trending-topic">#ReactJS</div>
+                        <div className="trending-tweets">125K posts</div>
+                    </div>
+                    <div className="trending-item">
+                        <div className="trending-category">Technology · Trending</div>
+                        <div className="trending-topic">#JavaScript</div>
+                        <div className="trending-tweets">89.2K posts</div>
+                    </div>
+                </div>
+                
+                <WhoToFollow />
+            </div>
+            
+            <SearchModal 
+                isOpen={bookmarkStore.showSearchModal} 
+                onClose={() => bookmarkStore.setShowSearchModal(false)}
+                store={bookmarkStore}
+            />
         </div>
     );
 });

@@ -45,13 +45,15 @@ router.get('/', optionalAuth, async (req, res) => {
         u.username,
         u.display_name,
         u.avatar_url,
+        p.retweets_count,
         ${req.user ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked` : '0 as user_liked'},
-        ${req.user ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked` : '0 as user_bookmarked'}
+        ${req.user ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked` : '0 as user_bookmarked'},
+        ${req.user ? `(SELECT COUNT(*) FROM reposts WHERE post_id = p.id AND user_id = ?) as user_reposted` : '0 as user_reposted'}
       FROM posts p
       JOIN users u ON p.user_id = u.id
       ORDER BY p.created_at DESC
       LIMIT 10
-    `, req.user ? [req.user.id, req.user.id] : []);
+    `, req.user ? [req.user.id, req.user.id, req.user.id] : []);
 
     console.log('finish');
 
@@ -61,7 +63,8 @@ router.get('/', optionalAuth, async (req, res) => {
         posts: posts.map(post => ({
           ...post,
           user_liked: Boolean(post.user_liked),
-          user_bookmarked: Boolean(post.user_bookmarked)
+          user_bookmarked: Boolean(post.user_bookmarked),
+          user_reposted: Boolean(post.user_reposted)
         })),
         pagination: {
           page: 1,
@@ -95,12 +98,14 @@ router.get('/following', authenticateToken, async (req, res) => {
         p.likes_count,
         p.comments_count,
         p.created_at,
+        p.retweets_count,
         u.id as user_id,
         u.username,
         u.display_name,
         u.avatar_url,
         (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id AND l.user_id = ?) as user_liked,
-        (SELECT COUNT(*) FROM bookmarks b WHERE b.post_id = p.id AND b.user_id = ?) as user_bookmarked
+        (SELECT COUNT(*) FROM bookmarks b WHERE b.post_id = p.id AND b.user_id = ?) as user_bookmarked,
+        (SELECT COUNT(*) FROM reposts r WHERE r.post_id = p.id AND r.user_id = ?) as user_reposted
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE (
@@ -111,7 +116,7 @@ router.get('/following', authenticateToken, async (req, res) => {
       )
       ORDER BY p.created_at DESC
       LIMIT 50
-    `, [userId, userId, userId, userId]); //LIMIT maknit?
+    `, [userId, userId, userId, userId, userId]); //LIMIT maknit?
 
     console.log('broj psotova :', posts.length); // more debug
 
@@ -121,7 +126,8 @@ router.get('/following', authenticateToken, async (req, res) => {
         posts: posts.map(post => ({
           ...post,
           user_liked: Boolean(post.user_liked),
-          user_bookmarked: Boolean(post.user_bookmarked)
+          user_bookmarked: Boolean(post.user_bookmarked),
+          user_reposted: Boolean(post.user_reposted)
         })),
         pagination: {
           page: 1,
@@ -146,6 +152,60 @@ router.get('/following', authenticateToken, async (req, res) => {
   }
 });
 
+// Get user's reposts
+router.get('/user/:username/reposts', optionalAuth, async (req, res) => {
+  try {
+    const username = req.params.username;
+    const userId = req.user?.id;
+
+    const reposts = await query(`
+      SELECT 
+        p.id,
+        p.content,
+        p.image_url,
+        p.likes_count,
+        p.comments_count,
+        p.retweets_count,
+        p.created_at,
+        u.id as user_id,
+        u.username,
+        u.display_name,
+        u.avatar_url,
+        ur.username as repost_user_username,
+        ur.display_name as repost_user_display_name,
+        ${userId ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked,` : '0 as user_liked,'}
+        ${userId ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked,` : '0 as user_bookmarked,'}
+        ${userId ? `(SELECT COUNT(*) FROM reposts WHERE post_id = p.id AND user_id = ?) as user_reposted` : '0 as user_reposted'}
+      FROM reposts r
+      JOIN posts p ON r.post_id = p.id
+      JOIN users u ON p.user_id = u.id
+      JOIN users ur ON r.user_id = ur.id
+      WHERE ur.username = ?
+      ORDER BY r.created_at DESC
+      LIMIT 20
+    `, userId ? [userId, userId, userId, username] : [username]);
+
+    res.json({
+      success: true,
+      data: {
+        posts: reposts.map(post => ({
+          ...post,
+          user_liked: Boolean(post.user_liked),
+          user_bookmarked: Boolean(post.user_bookmarked),
+          user_reposted: Boolean(post.user_reposted)
+        }))
+      }
+    });
+  } catch (error) {
+    console.log('GET_REPOSTS_ERROR', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching reposts',
+      error: error.message
+    });
+  }
+});
+
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const postId = parseInt(req.params.id);
@@ -158,16 +218,18 @@ router.get('/:id', optionalAuth, async (req, res) => {
         p.likes_count,
         p.comments_count,
         p.created_at,
+        p.retweets_count,
         u.id as user_id,
         u.username,
         u.display_name,
         u.avatar_url,
         ${req.user ? `(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked` : '0 as user_liked'},
-        ${req.user ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked` : '0 as user_bookmarked'}
+        ${req.user ? `(SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked` : '0 as user_bookmarked'},
+        ${req.user ? `(SELECT COUNT(*) FROM reposts WHERE post_id = p.id AND user_id = ?) as user_reposted` : '0 as user_reposted'}
       FROM posts p
       JOIN users u ON p.user_id = u.id
       WHERE p.id = ?
-    `, req.user ? [req.user.id, req.user.id, postId] : [postId]);
+    `, req.user ? [req.user.id, req.user.id, req.user.id, postId] : [postId]);
 
     if (posts.length === 0) {
       return res.status(404).json({
@@ -181,7 +243,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
       data: {
         ...posts[0],
         user_liked: Boolean(posts[0].user_liked),
-        user_bookmarked: Boolean(posts[0].user_bookmarked)
+        user_bookmarked: Boolean(posts[0].user_bookmarked),
+        user_reposted: Boolean(posts[0].user_reposted)
       }
     });
 
@@ -771,19 +834,21 @@ router.get('/user/bookmarks', authenticateToken, async (req, res) => {
         p.likes_count,
         p.comments_count,
         p.created_at,
+        p.retweets_count,
         u.id as user_id,
         u.username,
         u.display_name,
         u.avatar_url,
         (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked,
-        (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked
+        (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked,
+        (SELECT COUNT(*) FROM reposts WHERE post_id = p.id AND user_id = ?) as user_reposted
       FROM bookmarks b
       JOIN posts p ON b.post_id = p.id
       JOIN users u ON p.user_id = u.id
       WHERE b.user_id = ?
       ORDER BY b.created_at DESC
       LIMIT 20
-    `, [userId, userId, userId]);
+    `, [userId, userId, userId, userId]);
 
     res.json({
       success: true,
@@ -791,7 +856,8 @@ router.get('/user/bookmarks', authenticateToken, async (req, res) => {
         posts: bookmarks.map(post => ({
           ...post,
           user_liked: Boolean(post.user_liked),
-          user_bookmarked: Boolean(post.user_bookmarked)
+          user_bookmarked: Boolean(post.user_bookmarked),
+          user_reposted: Boolean(post.user_reposted)
         }))
       }
     });
@@ -800,6 +866,84 @@ router.get('/user/bookmarks', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching bookmarks',
+      error: error.message
+    });
+  }
+});
+
+// Repost endpoint
+router.post('/:id/repost', authenticateToken, async (req, res) => {
+  try {
+    const postId = parseInt(req.params.id);
+    const userId = req.user.id;
+    
+    if (!postId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing data'
+      });
+    }
+
+    const posts = await query(
+      'SELECT id FROM posts WHERE id = ?',
+      [postId]
+    );
+    
+    if (posts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    const existingRepost = await query(
+      'SELECT id FROM reposts WHERE post_id = ? AND user_id = ?',
+      [postId, userId]
+    );
+
+    let isReposted = false;
+    let repostsCount = 0;
+
+    if (existingRepost.length > 0) {
+      // Remove repost
+      await query('DELETE FROM reposts WHERE post_id = ? AND user_id = ?', 
+        [postId, userId]);
+      isReposted = false;
+    } else {
+      // Add repost
+      await query('INSERT INTO reposts (post_id, user_id) VALUES (?, ?)', 
+        [postId, userId]);
+      isReposted = true;
+    }
+
+    // Get updated count
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM reposts WHERE post_id = ?',
+      [postId]
+    );
+
+    repostsCount = countResult[0]?.count || 0;
+
+    // Update posts table retweets_count
+    await query(
+      'UPDATE posts SET retweets_count = ? WHERE id = ?',
+      [repostsCount, postId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        isReposted: isReposted,
+        repostsCount: repostsCount,
+        postId: postId
+      }
+    });
+
+  } catch (error) {
+    console.log('REPOST_ERROR', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error with repost',
       error: error.message
     });
   }

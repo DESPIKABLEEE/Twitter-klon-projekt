@@ -15,9 +15,9 @@ import {
     ArrowLeft, 
     House,
     MagnifyingGlass,
-    Envelope,
     BookmarkSimple,
-    User
+    User,
+    RocketLaunch
 } from "@phosphor-icons/react";
 import FollowModal from '../components/FollowModal';
 import './Profile.css';
@@ -35,12 +35,7 @@ const Profile = observer(() => {
             return;
         }
 
-        try {
-            profileStore.fetchProfile(username);
-        } catch (error) {
-            console.error('Data ', error);
-            navigate('/login');
-        }
+        profileStore.fetchProfile(username);
     }, [username, navigate]);
 
     useEffect(() => {
@@ -168,10 +163,6 @@ const Profile = observer(() => {
                         </div>
                         <div className="nav-item notification-nav">
                             <NotificationBell />
-                        </div>
-                        <div className="nav-item">
-                            <Envelope className="nav-icon" />
-                            <span>Messages</span>
                         </div>
                         <div 
                             className="nav-item"
@@ -321,25 +312,114 @@ const Profile = observer(() => {
                 </div>
 
                 <div className="profile-tabs">
-                    <button className="profile-tab active">
+                    <button 
+                        className={`profile-tab ${profileStore.activeTab === 'posts' ? 'active' : ''}`}
+                        onClick={() => profileStore.setActiveTab('posts')}
+                    >
                         Posts
                     </button>
-                    <button className="profile-tab">
+                    <button 
+                        className={`profile-tab ${profileStore.activeTab === 'replies' ? 'active' : ''}`}
+                        onClick={() => profileStore.setActiveTab('replies')}
+                    >
                         Replies
                     </button>
-                    <button className="profile-tab">
-                        Media
+                    <button 
+                        className={`profile-tab ${profileStore.activeTab === 'reposts' ? 'active' : ''}`}
+                        onClick={() => profileStore.setActiveTab('reposts')}
+                    >
+                        Reposts
                     </button>
                 </div>
 
                 <div className="posts-timeline">
-                    {!posts || posts.length === 0 ? (
-                        <div className="empty-state">
-                            <h3>No Posts yet</h3>
-                            <p>When {user.isOwnProfile ? 'you' : `@${user.username}`} post{user.isOwnProfile ? '' : 's'}, {user.isOwnProfile ? 'they' : 'it'} will show up here.</p>
-                        </div>
+                    {profileStore.activeTab === 'reposts' ? (
+                        // Reposts tab
+                        profileStore.repostsLoading ? (
+                            <div className="loading">Loading reposts...</div>
+                        ) : profileStore.reposts.length === 0 ? (
+                            <div className="empty-state">
+                                <h3>No reposts yet</h3>
+                                <p>When {user.isOwnProfile ? 'you' : `@${user.username}`} repost{user.isOwnProfile ? '' : 's'} a post, {user.isOwnProfile ? 'they' : 'it'} will show up here.</p>
+                            </div>
+                        ) : (
+                            profileStore.reposts.map((post, index) => (
+                                <article key={`repost-${post.id}-${index}`} className="post-item">
+                                    {/* Repost indicator - "You reposted this" ili username */}
+                                    <div style={{paddingLeft: '3.75rem', fontSize: '0.875rem', color: '#71767b', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                        <RocketLaunch size={14} weight="fill" />
+                                        {post.repost_user_username === userStore.user?.username ? 'You reposted this' : `${post.repost_user_display_name || post.repost_user_username} reposted this`}
+                                    </div>
+                                    <div className="post-container">
+                                        <div className="post-avatar">
+                                            {post.avatar_url ? (
+                                                <img src={post.avatar_url} alt={post.username} />
+                                            ) : (
+                                                (post.display_name || post.username).charAt(0).toUpperCase()
+                                            )}
+                                        </div>
+                                        <div className="post-content">
+                                            <div className="post-header">
+                                                <Link to={`/profile/${post.username}`} className="post-author-link">
+                                                    <span className="post-author">{post.display_name || post.username}</span>
+                                                </Link>
+                                                <span className="post-handle">@{post.username}</span>
+                                                <span className="post-time">·</span>
+                                                <span className="post-time">{new Date(post.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <div className="post-text">
+                                                {post.content}
+                                            </div>
+                                            {post.image_url && (
+                                                <img 
+                                                    src={post.image_url} 
+                                                    alt="Post" 
+                                                    className="post-image"
+                                                />
+                                            )}
+                                            <div className="post-actions">
+                                                <button 
+                                                    className="post-action"
+                                                    onClick={() => profileStore.handleToggleComments(post.id)}
+                                                >
+                                                    <ChatCircleText className="action-icon" size={16} />
+                                                    <span>{post.comments_count || 0}</span>
+                                                </button>
+                                                <button 
+                                                    className={`post-action ${post.user_liked ? 'liked' : ''}`}
+                                                    onClick={() => profileStore.likeRepost(post.id)}
+                                                >
+                                                    <Heart className="action-icon" size={16} weight={post.user_liked ? 'fill' : 'regular'} />
+                                                    <span>{post.likes_count || 0}</span>
+                                                </button>
+                                                <button 
+                                                    className={`post-action ${post.user_reposted ? 'reposted' : ''}`}
+                                                    onClick={() => profileStore.repostProfilePost(post.id)}
+                                                >
+                                                    <RocketLaunch className="action-icon" />
+                                                    <span>{post.retweets_count || 0}</span>
+                                                </button>
+                                                <button 
+                                                    className={`post-action ${post.user_bookmarked ? 'bookmarked' : ''}`}
+                                                    onClick={() => profileStore.bookmarkRepost(post.id)}
+                                                >
+                                                    <BookmarkSimple className="action-icon" size={16} weight={post.user_bookmarked ? 'fill' : 'regular'} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))
+                        )
                     ) : (
-                        posts.map((post, index) => (
+                        // Posts tab (default)
+                        !posts || posts.length === 0 ? (
+                            <div className="empty-state">
+                                <h3>No Posts yet</h3>
+                                <p>When {user.isOwnProfile ? 'you' : `@${user.username}`} post{user.isOwnProfile ? '' : 's'}, {user.isOwnProfile ? 'they' : 'it'} will show up here.</p>
+                            </div>
+                        ) : (
+                            posts.map((post, index) => (
                             <article key={`profile-post-${post.id}-${index}`} className="post-item">
                                 <div className="post-container">
                                     <div className="post-avatar">
@@ -391,6 +471,13 @@ const Profile = observer(() => {
                                             >
                                                 <Heart className="action-icon" size={16} weight={post.user_liked ? 'fill' : 'regular'} />
                                                 <span>{post.likes_count || 0}</span>
+                                            </button>
+                                            <button 
+                                                className={`post-action ${post.user_reposted ? 'bookmarked' : ''}`}
+                                                onClick={() => profileStore.repostPost(post.id)}
+                                            >
+                                                <RocketLaunch className="action-icon" size={16} />
+                                                <span>{post.retweets_count || 0}</span>
                                             </button>
                                             <button 
                                                 className={`post-action ${post.user_bookmarked ? 'bookmarked' : ''}`}
@@ -454,6 +541,7 @@ const Profile = observer(() => {
                                 </div>
                             </article>
                         ))
+                    )
                     )}
                 </div>
             </div>

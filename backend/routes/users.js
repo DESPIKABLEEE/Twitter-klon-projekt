@@ -209,17 +209,19 @@ router.get('/:username', optionalAuth, async (req, res) => {
               COUNT(DISTINCT l.id) as likes_count,
               COUNT(DISTINCT c.id) as comments_count,
               MAX(CASE WHEN l.user_id = ? THEN 1 ELSE 0 END) as user_liked,
-              MAX(CASE WHEN b.user_id = ? THEN 1 ELSE 0 END) as user_bookmarked
+              MAX(CASE WHEN b.user_id = ? THEN 1 ELSE 0 END) as user_bookmarked,
+              MAX(CASE WHEN r.user_id = ? THEN 1 ELSE 0 END) as user_reposted
        FROM posts p
        JOIN users u ON p.user_id = u.id
        LEFT JOIN likes l ON p.id = l.post_id
        LEFT JOIN comments c ON p.id = c.post_id
        LEFT JOIN bookmarks b ON p.id = b.post_id
+       LEFT JOIN reposts r ON p.id = r.post_id
        WHERE p.user_id = ?
        GROUP BY p.id
        ORDER BY p.created_at DESC
        LIMIT 20`,
-      [currentUserId, currentUserId, user.id]
+      [currentUserId, currentUserId, currentUserId, user.id]
     );
 
     res.json({
@@ -233,7 +235,8 @@ router.get('/:username', optionalAuth, async (req, res) => {
         posts: postsResult.map(post => ({
           ...post,
           user_liked: Boolean(post.user_liked),
-          user_bookmarked: Boolean(post.user_bookmarked)
+          user_bookmarked: Boolean(post.user_bookmarked),
+          user_reposted: Boolean(post.user_reposted)
         }))
       }
     });

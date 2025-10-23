@@ -5,24 +5,24 @@ import { X, MagnifyingGlass, User } from "@phosphor-icons/react";
 import { homeStore } from '../stores';
 import './SearchModal.css';
 
-const SearchModal = observer(({ isOpen, onClose }) => {
+const SearchModal = observer(({ isOpen, onClose, store = homeStore }) => {
     const navigate = useNavigate();
 
     useEffect(() => {
         if (!isOpen) {
-            homeStore.setSearchQuery('');
-            homeStore.setSearchResults([]);
+            store.setSearchQuery('');
+            store.setSearchResults([]);
         }
-    }, [isOpen]);
+    }, [isOpen, store]);
 
     const handleInputChange = (e) => {
         const query = e.target.value;
-        homeStore.setSearchQuery(query);
-        homeStore.searchUsers(query);
+        store.setSearchQuery(query);
+        store.searchUsers(query);
     };
 
     const handleUserClick = (username) => {
-        navigate(`/${username}`);
+        navigate(`/profile/${username}`);
         onClose();
     };
 
@@ -43,7 +43,7 @@ const SearchModal = observer(({ isOpen, onClose }) => {
                     <input
                         type="text"
                         placeholder="Pretraži korisnike..."
-                        value={homeStore.searchQuery}
+                        value={store.searchQuery}
                         onChange={handleInputChange}
                         className="search-input"
                         autoFocus
@@ -51,15 +51,15 @@ const SearchModal = observer(({ isOpen, onClose }) => {
                 </div>
 
                 <div className="search-results">
-                    {homeStore.searchLoading && (
+                    {store.searchLoading && (
                         <div className="search-loading">Searching...</div>
                     )}
 
-                    {!homeStore.searchLoading && homeStore.searchResults.length === 0 && homeStore.searchQuery.trim() && (
-                        <div className="search-empty">No results for "{homeStore.searchQuery}"</div>
+                    {!store.searchLoading && store.searchResults.length === 0 && store.searchQuery.trim() && (
+                        <div className="search-empty">No results for "{store.searchQuery}"</div>
                     )}
 
-                    {!homeStore.searchLoading && homeStore.searchResults.map(user => (
+                    {!store.searchLoading && store.searchResults.map(user => (
                         <div
                             key={user.id}
                             className="search-user-item"
