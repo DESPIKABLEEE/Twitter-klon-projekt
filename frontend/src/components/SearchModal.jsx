@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react';
 import { useNavigate } from 'react-router-dom';
-import { X, MagnifyingGlass, User } from "@phosphor-icons/react";
+import { X, MagnifyingGlass } from "@phosphor-icons/react";
 import { homeStore } from '../stores';
 import './SearchModal.css';
 
@@ -69,7 +69,9 @@ const SearchModal = observer(({ isOpen, onClose, store = homeStore }) => {
                                 {user.avatar_url ? (
                                     <img src={user.avatar_url} alt={user.username} />
                                 ) : (
-                                    <User size={20} />
+                                    <div className="search-user-avatar-initial">
+                                        {user.display_name?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase()}
+                                    </div>
                                 )}
                             </div>
                             <div className="search-user-info">

@@ -418,7 +418,9 @@ const Home = observer(() => {
                                                                     navigate(`/profile/${comment.username}`);
                                                                 }}
                                                             >
-                                                                <div style={{width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: '#1d9bf0', marginRight: '0.5rem'}}></div>
+                                                                <div style={{width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: '#1d9bf0', marginRight: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '0.75rem'}}>
+                                                                    {(comment.display_name || comment.username).charAt(0).toUpperCase()}
+                                                                </div>
                                                                 <span style={{fontWeight: '700', marginRight: '0.5rem'}}>{comment.display_name || comment.username}</span>
                                                                 <span style={{color: '#71767b'}}>@{comment.username}</span>
                                                             </div>

@@ -140,7 +140,6 @@ router.get('/search', optionalAuth, async (req, res) => {
         ${req.user ? `(SELECT COUNT(*) FROM follows WHERE follower_id = ? AND following_id = u.id) as is_following` : '0 as is_following'}
       FROM users u
       WHERE (u.username LIKE ? OR u.display_name LIKE ?)
-      AND u.id != ?
       ORDER BY 
         CASE 
           WHEN u.username LIKE ? THEN 1
@@ -153,7 +152,6 @@ router.get('/search', optionalAuth, async (req, res) => {
       req.user ? req.user.id : null,
       searchTerm, 
       searchTerm,
-      req.user ? req.user.id : 0,
       `${q.trim()}%`,
       `${q.trim()}%`
     ]);

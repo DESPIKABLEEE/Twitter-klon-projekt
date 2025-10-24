@@ -504,7 +504,7 @@ const Profile = observer(() => {
                                                                     {comment.avatar_url ? (
                                                                         <img src={comment.avatar_url} alt={comment.username} />
                                                                     ) : (
-                                                                        <span className="comment-initial">
+                                                                        <span className="comment-avatar-initial">
                                                                             {(comment.display_name || comment.username).charAt(0).toUpperCase()}
                                                                         </span>
                                                                     )}
