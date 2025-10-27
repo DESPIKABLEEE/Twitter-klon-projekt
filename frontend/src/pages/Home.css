@@ -351,10 +351,6 @@
     transition: background-color 0.2s;
 }
 
-.compose-option:hover {
-    background-color: rgba(29, 155, 240, 0.1);
-}
-
 .post-button {
     background-color: #1d9bf0;
     color: #ffffff;

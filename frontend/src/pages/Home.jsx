@@ -301,7 +301,7 @@ const Home = observer(() => {
                                     <button type="button" className="compose-option" onClick={handleImageClick}>
                                         <ImageSquare size={20} />
                                     </button>
-                                    <button type="button" className="compose-option">
+                                    {/* <button type="button" className="compose-option">
                                         <Gif size={20} />
                                     </button>
                                     <button type="button" className="compose-option">
@@ -315,7 +315,7 @@ const Home = observer(() => {
                                     </button>
                                     <button type="button" className="compose-option">
                                         <MapPin size={20} />
-                                    </button>
+                                    </button> */}
                                 </div>
                                 <button 
                                     type="submit" 

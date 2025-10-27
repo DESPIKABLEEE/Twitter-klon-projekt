@@ -12,9 +12,9 @@ const WhoToFollow = observer(() => {
     await suggestionStore.followUser(userId);
   };
 
-  const handleShowMore = () => {
-    suggestionStore.fetchSuggestedUsers();
-  };
+  // const handleShowMore = () => {
+  //   suggestionStore.fetchSuggestedUsers();
+  // };
 
   if (suggestionStore.loading) {
     return (
@@ -72,11 +72,11 @@ const WhoToFollow = observer(() => {
             </div>
           ))}
           
-          <div className="show-more">
+          {/* <div className="show-more">
             <button className="show-more-btn" onClick={handleShowMore}>
               Show more
             </button>
-          </div>
+          </div> */}
         </>
       )}
     </div>
